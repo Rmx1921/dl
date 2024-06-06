@@ -43,43 +43,52 @@ const LotteryTicketGenerator = () => {
     };
 
     return (
-        <div>
-            <h2>Lottery Ticket Generator</h2>
-            <div>
-                <label>First Serial Number: </label>
+        <div className="max-w-md mx-auto mt-8 p-4 bg-gray-100 rounded-lg">
+            {/* <h2 className="text-2xl mb-4">Lottery Ticket Generator</h2> */}
+            <div className="mb-4">
+                <label className="block mb-2">First Serial Number:</label>
                 <input
                     type="text"
                     value={firstSerial}
                     onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
             </div>
-            <div>
-                <label>Last Serial Number: </label>
+            <div className="mb-4">
+                <label className="block mb-2">Last Serial Number:</label>
                 <input
                     type="text"
                     value={lastSerial}
                     onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
             </div>
-            <div>
-                <label>First Ticket Number: </label>
+            <div className="mb-4">
+                <label className="block mb-2">First Ticket Number:</label>
                 <input
                     type="number"
                     value={firstNumber}
                     onChange={(e) => setFirstNumber(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
             </div>
-            <div>
-                <label>Last Ticket Number: </label>
+            <div className="mb-4">
+                <label className="block mb-2">Last Ticket Number:</label>
                 <input
                     type="number"
                     value={lastNumber}
                     onChange={(e) => setLastNumber(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
                 />
             </div>
-            <button onClick={handleGenerate}>Generate</button>
-            <div>
-                <h3>Generated Lottery Tickets</h3>
+            <button
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md"
+                onClick={handleGenerate}
+            >
+                Generate
+            </button>
+            <div className="mt-4">
+                <h3 className="text-xl mb-2">Generated Lottery Tickets</h3>
                 <ul>
                     {lotteryTickets.map((ticket, index) => (
                         <li key={index}>Serial: {ticket.serial}, Number: {ticket.number}</li>
