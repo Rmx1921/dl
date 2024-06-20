@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import usePDFSlip from './usePDFSlip';
 import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../helpers/indexdb';
-import Calendar from 'react-calendar';
+import { toast } from 'react-toastify';
 import 'react-calendar/dist/Calendar.css';
 
 class Lottery {
@@ -73,10 +73,25 @@ const LotteryTicketGenerator = () => {
     const handleGenerate = async () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
-        const tickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber);
-        setLotteryTickets(tickets);
-        setSelectedSerials([]);
-        await saveTicketsToDB(tickets);
+        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber);
+        const ticketsFromDB = await getAllTicketsFromDB();
+        const filteredNewTickets = newTickets.filter(newTicket => {
+            return !ticketsFromDB.some(existingTicket =>
+                existingTicket.serial === newTicket.serial &&
+                existingTicket.number === newTicket.number &&
+                existingTicket.ticketname === newTicket.ticketname &&
+                existingTicket.serialNumber === newTicket.serialNumber
+            );
+        });
+
+        if (filteredNewTickets.length > 0) {
+            const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
+            setLotteryTickets(updatedTickets);
+            setSelectedSerials([]);
+            await saveTicketsToDB(updatedTickets);
+        } else {
+            toast.error('No new tickets to add.')
+        }
     };
 
     const handleSelectSerial = (serial) => {
@@ -103,34 +118,47 @@ const LotteryTicketGenerator = () => {
 
     const summarizeTicketsByPrefix = () => {
         const ticketSummary = {};
-        const startSerial = lotteryTickets[0]?.serial.substring(0, 2);
-        const endSerial = lotteryTickets[lotteryTickets.length - 1]?.serial.substring(0, 2);
 
-        if (startSerial && endSerial) {
-            ticketSummary[startSerial] = {
-                start: lotteryTickets[0].serial + lotteryTickets[0].number.toString(),
-                end: lotteryTickets[lotteryTickets.length - 1].serial + lotteryTickets[lotteryTickets.length - 1].number.toString(),
-                count: lotteryTickets.length
-            };
-        }
+        lotteryTickets.forEach(ticket => {
+            const prefix = ticket.serial[0];
+            const key = `${prefix}-${ticket.ticketname}`;
+
+            if (!ticketSummary[key]) {
+                ticketSummary[key] = {
+                    start: ticket.serial + ticket.number.toString(),
+                    end: ticket.serial + ticket.number.toString(),
+                    count: 1
+                };
+            } else {
+                ticketSummary[key].end = ticket.serial + ticket.number.toString();
+                ticketSummary[key].count += 1;
+            }
+        });
 
         return ticketSummary;
     };
 
     const TicketsByPrefix = () => {
         const ticketSummary = {};
-        const startSerial = lotteryTickets[0]?.serial.substring(0, 2);
-        const endSerial = lotteryTickets[lotteryTickets.length - 1]?.serial.substring(0, 2);
-        const serialsInRange = lotteryTickets.map(ticket => ticket.serial + ticket.number.toString());
 
-        if (startSerial && endSerial) {
-            ticketSummary[startSerial] = {
-                start: lotteryTickets[0].serial + lotteryTickets[0].number.toString(),
-                end: lotteryTickets[lotteryTickets.length - 1].serial + lotteryTickets[lotteryTickets.length - 1].number.toString(),
-                count: lotteryTickets.length,
-                serials: serialsInRange
-            };
-        }
+        lotteryTickets.forEach(ticket => {
+            const prefix = ticket.serial[0];
+            const key = `${prefix}-${ticket.ticketname}`;
+            const serialNumber = ticket.serial + ticket.number.toString();
+
+            if (!ticketSummary[key]) {
+                ticketSummary[key] = {
+                    start: serialNumber,
+                    end: serialNumber,
+                    count: 1,
+                    serials: [serialNumber]
+                };
+            } else {
+                ticketSummary[key].end = serialNumber;
+                ticketSummary[key].count += 1;
+                ticketSummary[key].serials.push(serialNumber);
+            }
+        });
 
         return ticketSummary;
     };
@@ -150,7 +178,7 @@ const LotteryTicketGenerator = () => {
         <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-6'>
             <div className='flex flex-wrap gap-4 justify-center'>
                 <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">First Serial Number:</label>
+                    <label className="block mb-2 font-bold text-gray-700">First Serial:</label>
                     <input
                         type="text"
                         value={firstSerial}
@@ -159,7 +187,7 @@ const LotteryTicketGenerator = () => {
                     />
                 </div>
                 <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">Last Serial Number:</label>
+                    <label className="block mb-2 font-bold text-gray-700">Last Serial:</label>
                     <input
                         type="text"
                         value={lastSerial}
@@ -204,12 +232,19 @@ const LotteryTicketGenerator = () => {
                     />
                 </div>
                 <div className="mt-7">
-                    <button
-                        onClick={handleGenerate}
-                        className="w-28 h-12 bg-gradient-to-r from-emerald-400 to-cyan-400"
-                    >
-                        Save
-                    </button>
+                    <div className='flex flex-row'>
+                        <div>
+                            <button
+                                onClick={handleGenerate}
+                                className="w-28 h-12 bg-gradient-to-r from-emerald-400 to-cyan-400"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div className='mt-7'>
+                    {selectedSerials.length > 0 && downloadLink}
                 </div>
             </div>
             <div className="overflow-x-auto">
@@ -217,7 +252,7 @@ const LotteryTicketGenerator = () => {
                     <thead>
                         <tr>
                             <th className="border border-gray-400 px-4 py-2 bg-gray-200">Select</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Serial</th>
+                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Ticket Name</th>
                             <th className="border border-gray-400 px-4 py-2 bg-gray-200">Start Serial</th>
                             <th className="border border-gray-400 px-4 py-2 bg-gray-200">End Serial</th>
                             <th className="border border-gray-400 px-4 py-2 bg-gray-200">Count</th>
@@ -225,62 +260,62 @@ const LotteryTicketGenerator = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.entries(ticketSub).map(([prefix, { start, end, count, serials }]) => (
-                            <tr key={prefix}>
-                                <td className="border border-gray-400 px-4 py-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedSerials.includes(prefix)}
-                                        onChange={() => handleSelectSerial(prefix)}
-                                    />
-                                </td>
-                                <td className="border border-gray-400 px-4 py-2">{prefix}</td>
-                                <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(prefix)}>
-                                    {start}
-                                    {showDropdown[prefix] && (
-                                        <div ref={el => dropdownRefs.current[prefix] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
-                                            {serials.map(serial => (
-                                                <div key={serial} className="px-4 py-2">
-                                                    {serial}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(prefix)}>
-                                    {end}
-                                    {showDropdown[prefix] && (
-                                        <div ref={el => dropdownRefs.current[prefix] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
-                                            {serials.map(serial => (
-                                                <div key={serial} className="px-4 py-2">
-                                                    {serial}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="border border-gray-400 px-4 py-2">{count}</td>
-                                <td className="border border-gray-400 px-4 py-2">
-                                    <button
-                                        onClick={() => handleUpdateTicket(ticket)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Update
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteTicket(ticket.id)}
-                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2"
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {Object.entries(ticketSub).map(([key, { start, end, count, serials }]) => {
+                            const [prefix, ticketname] = key.split('-');
+                            return (
+                                <tr key={key}>
+                                    <td className="border border-gray-400 px-4 py-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedSerials.includes(key)}
+                                            onChange={() => handleSelectSerial(key)}
+                                        />
+                                    </td>
+                                    <td className="border border-gray-400 px-4 py-2">{ticketname}</td>
+                                    <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(key)}>
+                                        {start}
+                                        {showDropdown[key] && (
+                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
+                                                {serials.map(serial => (
+                                                    <div key={serial} className="px-4 py-2">
+                                                        {serial}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(key)}>
+                                        {end}
+                                        {showDropdown[key] && (
+                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
+                                                {serials.map(serial => (
+                                                    <div key={serial} className="px-4 py-2">
+                                                        {serial}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="border border-gray-400 px-4 py-2">{count}</td>
+                                    <td className="border border-gray-400 px-4 py-2">
+                                        <button
+                                            onClick={() => handleUpdateTicket(ticket)}
+                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                        >
+                                            Update
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteTicket(ticket.id)}
+                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
-            </div>
-            <div className="mt-4">
-                {selectedSerials.length > 0 && downloadLink}
             </div>
         </div>
     );
