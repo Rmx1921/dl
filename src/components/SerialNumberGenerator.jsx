@@ -3,13 +3,15 @@ import usePDFSlip from './usePDFSlip';
 import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../helpers/indexdb';
 import { toast } from 'react-toastify';
 import 'react-calendar/dist/Calendar.css';
+import BillingModal from './BillingModal'
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber) {
+    constructor(serial, number, ticketname, serialNumber, state) {
         this.serial = serial;
         this.number = number;
         this.ticketname = ticketname;
         this.serialNumber = serialNumber;
+        this.state = state;
     }
 }
 
@@ -22,7 +24,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -45,6 +47,15 @@ const LotteryTicketGenerator = () => {
     const [ticketname, setTicketName] = useState('');
     const [showDropdown, setShowDropdown] = useState({});
     const dropdownRefs = useRef({});
+    const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+
+    const openBillingModal = () => {
+        setIsBillingModalOpen(true);
+    };
+
+    const closeBillingModal = () => {
+        setIsBillingModalOpen(false);
+    };
 
     useEffect(() => {
         async function fetchTickets() {
@@ -95,6 +106,13 @@ const LotteryTicketGenerator = () => {
     };
 
     const handleSelectSerial = (serial) => {
+        const updatedTickets = lotteryTickets.map(ticket => {
+            if (ticket.serial === serial) {
+                ticket.state = !ticket.state;
+            }
+            return ticket;
+        });
+        setLotteryTickets(updatedTickets);
         setSelectedSerials((prevSelectedSerials) =>
             prevSelectedSerials.includes(serial)
                 ? prevSelectedSerials.filter((s) => s !== serial)
@@ -242,6 +260,13 @@ const LotteryTicketGenerator = () => {
                             </button>
                         </div>
                     </div>
+                    <button
+                        onClick={openBillingModal}
+                        className="w-28 h-12 bg-gradient-to-r from-emerald-400 to-cyan-400 mt-4"
+                    >
+                        Billing
+                    </button>
+
                 </div>
                 <div className='mt-7'>
                     {selectedSerials.length > 0 && downloadLink}
@@ -317,6 +342,7 @@ const LotteryTicketGenerator = () => {
                     </tbody>
                 </table>
             </div>
+            <BillingModal isOpen={isBillingModalOpen} onClose={closeBillingModal} />
         </div>
     );
 };
