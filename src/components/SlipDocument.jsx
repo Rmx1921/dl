@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
     textCenter: { textAlign: 'center' }
 });
 
-const SlipDocument = ({ ticketSummary, currentDateTime }) => (
+const SlipDocument = ({ ticketSummary, currentDateTime,name}) => (
     <Document>
         <Page size="A4" style={styles.page}>
             <View style={[styles.section, styles.header]}>
@@ -20,7 +20,7 @@ const SlipDocument = ({ ticketSummary, currentDateTime }) => (
             <View style={styles.section}>
                 <Text>Date: {currentDateTime.toLocaleDateString()}</Text>
                 <Text>Time: {currentDateTime.toLocaleTimeString()}</Text>
-                <Text>Name: xxxxx</Text>
+                <Text>Name: {name}</Text>
                 <Text>Mob: 8848780005</Text>
             </View>
             <View style={styles.borderBottom} />

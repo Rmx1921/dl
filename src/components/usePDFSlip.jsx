@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import SlipDocument from './SlipDocument';
 
-const usePDFSlip = (ticketSummary, fileName = 'print-slip.pdf') => {
+const usePDFSlip = (ticketSummary,buyerName,fileName = 'print-slip.pdf') => {
     const [showModal, setShowModal] = useState(false);
     const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
@@ -12,7 +12,7 @@ const usePDFSlip = (ticketSummary, fileName = 'print-slip.pdf') => {
     };
 
     const document = useMemo(() => (
-        <SlipDocument ticketSummary={ticketSummary} currentDateTime={currentDateTime} />
+        <SlipDocument ticketSummary={ticketSummary} currentDateTime={currentDateTime} name={buyerName}/>
     ), [ticketSummary, currentDateTime]);
 
     return (

@@ -7,6 +7,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [searchResults, setSearchResults] = useState({});
     const [allTickets, setAllTickets] = useState([]);
     const [selectedTickets, setSelectedTickets] = useState(new Set());
+    const [buyerName, setBuyerName] = useState('');
 
     useEffect(() => {
         async function fetchTickets() {
@@ -26,6 +27,11 @@ const BillingModal = ({ isOpen, onClose }) => {
     }, [searchQuery]);
 
     const searchTickets = () => {
+        if (searchQuery.trim() === '') {
+            setSearchResults({});
+            return;
+        }
+
         const searchQueryLowerCase = searchQuery.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
             return (
@@ -50,6 +56,10 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     const handleSearchInputChange = (event) => {
         setSearchQuery(event.target.value);
+    };
+
+    const handleBuyerNameChange = (event) => {
+        setBuyerName(event.target.value);
     };
 
     const handleLoadMore = () => {
@@ -84,7 +94,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         return acc;
     }, {});
 
-    const downloadLink = usePDFSlip(selectedTicketSummary);
+    const downloadLink = usePDFSlip(selectedTicketSummary, buyerName);
 
     return (
         isOpen && (
@@ -97,6 +107,15 @@ const BillingModal = ({ isOpen, onClose }) => {
                             placeholder="Search Ticket Serial..."
                             value={searchQuery}
                             onChange={handleSearchInputChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="Enter Buyer's Name"
+                            value={buyerName}
+                            onChange={handleBuyerNameChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-md"
                         />
                     </div>
@@ -134,7 +153,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                     )}
 
                     <div className='mt-4'>
-                        {selectedTickets.size > 0 && downloadLink}
+                        {selectedTickets.size > 0 && buyerName.trim() !== '' && downloadLink}
                     </div>
 
                     <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
