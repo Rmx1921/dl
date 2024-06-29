@@ -130,7 +130,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     ) : (
-                        <p className="text-gray-500 text-sm">No results found</p>
+                        <p className="text-gray-500 text-sm">Enter Ticket serial no</p>
                     )}
 
                     <div className='mt-4'>
