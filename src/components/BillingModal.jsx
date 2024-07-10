@@ -20,19 +20,19 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            searchTickets();
+            if (allTickets.length > 0) {
+                searchTickets();
+            }
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery]);
+    }, [searchQuery, allTickets]);
 
     const searchTickets = () => {
-        console.log('-')
         if (searchQuery.trim() === '') {
             setSearchResults({});
             return;
         }
-
         const searchQueryLowerCase = searchQuery.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
             return (

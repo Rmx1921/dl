@@ -7,6 +7,7 @@ import BillingModal from './BillingModal'
 
 class Lottery {
     constructor(serial, number, ticketname, serialNumber, state) {
+        this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
         this.ticketname = ticketname;
@@ -14,6 +15,7 @@ class Lottery {
         this.state = state;
     }
 }
+
 
 const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber) => {
     const ticket_arr = [];
@@ -86,24 +88,21 @@ const LotteryTicketGenerator = () => {
         const lastNum = parseInt(lastNumber, 10);
         const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber);
         const ticketsFromDB = await getAllTicketsFromDB();
+    
         const filteredNewTickets = newTickets.filter(newTicket => {
-            return !ticketsFromDB.some(existingTicket =>
-                existingTicket.serial === newTicket.serial &&
-                existingTicket.number === newTicket.number &&
-                existingTicket.ticketname === newTicket.ticketname &&
-                existingTicket.serialNumber === newTicket.serialNumber
-            );
+            return !ticketsFromDB.some(existingTicket => existingTicket.id === newTicket.id);
         });
-
+    
         if (filteredNewTickets.length > 0) {
             const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
             setLotteryTickets(updatedTickets);
-            setSelectedSerials([]);
-            await saveTicketsToDB(updatedTickets);
+            await saveTicketsToDB(filteredNewTickets);
+            toast.success('New tickets have been added successfully.');
         } else {
-            toast.error('No new tickets to add.')
+            toast.error('No new tickets to add or some tickets are already existing in the specified range.');
         }
     };
+        
 
     const handleSelectSerial = (serial) => {
         const updatedTickets = lotteryTickets.map(ticket => {
