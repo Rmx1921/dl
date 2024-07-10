@@ -27,6 +27,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     }, [searchQuery]);
 
     const searchTickets = () => {
+        console.log('-')
         if (searchQuery.trim() === '') {
             setSearchResults({});
             return;
