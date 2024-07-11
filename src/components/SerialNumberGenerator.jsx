@@ -2,22 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import usePDFSlip from './usePDFSlip';
 import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../helpers/indexdb';
 import { toast } from 'react-toastify';
-import 'react-calendar/dist/Calendar.css';
-import BillingModal from './BillingModal'
+import BillingModal from './BillingModal';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber, state) {
+    constructor(serial, number, ticketname, serialNumber, state, drawDate) {
         this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
         this.ticketname = ticketname;
         this.serialNumber = serialNumber;
         this.state = state;
+        this.drawDate = drawDate;
     }
 }
 
-
-const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber) => {
+const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber, drawDate) => {
     const ticket_arr = [];
     let temp_first_lott_ser = firstSerial;
     let temp_first_lottery_num = firstNumber;
@@ -26,7 +27,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -50,6 +51,7 @@ const LotteryTicketGenerator = () => {
     const [showDropdown, setShowDropdown] = useState({});
     const dropdownRefs = useRef({});
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+    const [drawDate, setDrawDate] = useState(new Date());
 
     const openBillingModal = () => {
         setIsBillingModalOpen(true);
@@ -62,7 +64,12 @@ const LotteryTicketGenerator = () => {
     useEffect(() => {
         async function fetchTickets() {
             const ticketsFromDB = await getAllTicketsFromDB();
-            setLotteryTickets(ticketsFromDB);
+            // Parse drawDate from string to Date object
+            const parsedTickets = ticketsFromDB.map(ticket => ({
+                ...ticket,
+                drawDate: new Date(ticket.drawDate)
+            }));
+            setLotteryTickets(parsedTickets);
         }
 
         fetchTickets();
@@ -86,7 +93,7 @@ const LotteryTicketGenerator = () => {
     const handleGenerate = async () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
-        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber);
+        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate);
         const ticketsFromDB = await getAllTicketsFromDB();
 
         const filteredNewTickets = newTickets.filter(newTicket => {
@@ -102,7 +109,6 @@ const LotteryTicketGenerator = () => {
             toast.error('No new tickets to add or some tickets are already existing in the specified range.');
         }
     };
-
 
     const handleSelectSerial = (serial) => {
         const updatedTickets = lotteryTickets.map(ticket => {
@@ -160,7 +166,7 @@ const LotteryTicketGenerator = () => {
 
         lotteryTickets.forEach(ticket => {
             const prefix = ticket.serial[0];
-            const key = `${prefix}-${ticket.ticketname}-${Math.floor(ticket.number / 100)}`;
+            const key = `${prefix}-${ticket.ticketname}-${Math.floor(ticket.number / 100)}-${ticket.drawDate}`;
             const serialNumber = ticket.serial + ticket.number.toString().padStart(6, '0');
 
             if (!ticketSummary[key]) {
@@ -169,7 +175,8 @@ const LotteryTicketGenerator = () => {
                     end: serialNumber,
                     count: 1,
                     serials: [serialNumber],
-                    ticketname: ticket.ticketname
+                    ticketname: ticket.ticketname,
+                    drawDate: ticket.drawDate
                 };
             } else {
                 ticketSummary[key].end = serialNumber;
@@ -193,145 +200,97 @@ const LotteryTicketGenerator = () => {
     // };
 
     return (
-        <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-6'>
-            <div className='flex flex-wrap gap-4 justify-center'>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">First Serial:</label>
-                    <input
-                        type="text"
-                        value={firstSerial}
-                        onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">Last Serial:</label>
-                    <input
-                        type="text"
-                        value={lastSerial}
-                        onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">First Ticket Number:</label>
-                    <input
-                        type="number"
-                        value={firstNumber}
-                        onChange={(e) => setFirstNumber(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">Last Ticket Number:</label>
-                    <input
-                        type="number"
-                        value={lastNumber}
-                        onChange={(e) => setLastNumber(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">Lottery Serial Number:</label>
-                    <input
-                        type="text"
-                        value={serialNumber}
-                        onChange={(e) => setSerialNumber(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mb-4 w-full md:w-1/4">
-                    <label className="block mb-2 font-bold text-gray-700">Ticket Name:</label>
-                    <input
-                        type="text"
-                        value={ticketname}
-                        onChange={(e) => setTicketName(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                    />
-                </div>
-                <div className="mt-7">
-                    <div className='flex flex-row'>
-                        <div>
-                            <button
-                                onClick={handleGenerate}
-                                className="w-28 h-12 bg-gradient-to-r from-emerald-400 to-cyan-400"
-                            >
-                                Save
-                            </button>
-                        </div>
+        <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-8'>
+            {/* <h1 className="text-3xl font-bold text-white mb-6 text-center">Lottery Ticket Generator</h1> */}
+            <div className='p-6 mb-8'>
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} />
+                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} />
+                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} />
+                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} />
+                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
+                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} />
+                    <div className="mb-4">
+                        <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>
+                        <DatePicker
+                            selected={drawDate}
+                            onChange={date => setDrawDate(date)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                        />
                     </div>
+                </div>
+                <div className="flex justify-center mt-6 space-x-4">
+                    <button
+                        onClick={handleGenerate}
+                        className="px-6 py-2 bg-gradient-to-r from-emerald-400 to-cyan-400 text-white font-bold rounded-md hover:from-emerald-500 hover:to-cyan-500 transition duration-300"
+                    >
+                        Save
+                    </button>
                     <button
                         onClick={openBillingModal}
-                        className="w-28 h-12 bg-gradient-to-r from-emerald-400 to-cyan-400 mt-4"
+                        className="px-6 py-2 bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold rounded-md hover:from-purple-500 hover:to-pink-500 transition duration-300"
                     >
                         Billing
                     </button>
-
                 </div>
-                <div className='mt-7'>
+                <div className='mt-4 flex justify-center'>
                     {selectedSerials.length > 0 && downloadLink}
                 </div>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full border-collapse border bg-white rounded-lg border-gray-400">
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                <table className="w-full border-collapse">
                     <thead>
-                        <tr>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Select</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Ticket Name</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Start Serial</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">End Serial</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Count</th>
-                            <th className="border border-gray-400 px-4 py-2 bg-gray-200">Actions</th>
+                        <tr className="bg-gray-200">
+                            <th className="px-4 py-2 text-left">Select</th>
+                            <th className="px-4 py-2 text-left">Ticket Name</th>
+                            <th className="px-4 py-2 text-left">Start Serial</th>
+                            <th className="px-4 py-2 text-left">End Serial</th>
+                            <th className="px-4 py-2 text-left">Count</th>
+                            <th className="px-4 py-2 text-left">Draw Date</th>
+                            <th className="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname }]) => {
+                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate }]) => {
                             const [prefix, _, numberGroup] = key.split('-');
                             return (
-                                <tr key={key}>
-                                    <td className="border border-gray-400 px-4 py-2">
+                                <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
+                                    <td className="px-4 py-2">
                                         <input
                                             type="checkbox"
                                             checked={selectedSerials.includes(key)}
                                             onChange={() => handleSelectSerial(key)}
+                                            className="form-checkbox h-5 w-5 text-blue-600"
                                         />
                                     </td>
-                                    <td className="border border-gray-400 px-4 py-2">{ticketname}</td>
-                                    <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(key)}>
+                                    <td className="px-4 py-2">{ticketname}</td>
+                                    <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
                                         {start}
                                         {showDropdown[key] && (
-                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
+                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48 z-10">
                                                 {serials.map(serial => (
-                                                    <div key={serial} className="px-4 py-2">
+                                                    <div key={serial} className="px-4 py-2 hover:bg-gray-100">
                                                         {serial}
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="border border-gray-400 px-4 py-2" onClick={() => toggleDropdown(key)}>
+                                    <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
                                         {end}
-                                        {showDropdown[key] && (
-                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48">
-                                                {serials.map(serial => (
-                                                    <div key={serial} className="px-4 py-2">
-                                                        {serial}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
                                     </td>
-                                    <td className="border border-gray-400 px-4 py-2">{count}</td>
-                                    <td className="border border-gray-400 px-4 py-2">
+                                    <td className="px-4 py-2">{count}</td>
+                                    <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
+                                    <td className="px-4 py-2">
                                         <button
                                             onClick={() => handleUpdateTicket(key)}
-                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm mr-2"
                                         >
                                             Update
                                         </button>
                                         <button
                                             onClick={() => handleDeleteTicket(key)}
-                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2"
+                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
                                         >
                                             Delete
                                         </button>
@@ -346,5 +305,17 @@ const LotteryTicketGenerator = () => {
         </div>
     );
 };
+
+const InputField = ({ label, type = "text", value, onChange }) => (
+    <div className="mb-4">
+        <label className="block mb-2 font-bold text-gray-700">{label}:</label>
+        <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+    </div>
+);
 
 export default LotteryTicketGenerator;
