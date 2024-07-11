@@ -88,11 +88,11 @@ const LotteryTicketGenerator = () => {
         const lastNum = parseInt(lastNumber, 10);
         const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber);
         const ticketsFromDB = await getAllTicketsFromDB();
-    
+
         const filteredNewTickets = newTickets.filter(newTicket => {
             return !ticketsFromDB.some(existingTicket => existingTicket.id === newTicket.id);
         });
-    
+
         if (filteredNewTickets.length > 0) {
             const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
             setLotteryTickets(updatedTickets);
@@ -102,7 +102,7 @@ const LotteryTicketGenerator = () => {
             toast.error('No new tickets to add or some tickets are already existing in the specified range.');
         }
     };
-        
+
 
     const handleSelectSerial = (serial) => {
         const updatedTickets = lotteryTickets.map(ticket => {
@@ -160,15 +160,16 @@ const LotteryTicketGenerator = () => {
 
         lotteryTickets.forEach(ticket => {
             const prefix = ticket.serial[0];
-            const key = `${prefix}-${ticket.ticketname}`;
-            const serialNumber = ticket.serial + ticket.number.toString();
+            const key = `${prefix}-${ticket.ticketname}-${Math.floor(ticket.number / 100)}`;
+            const serialNumber = ticket.serial + ticket.number.toString().padStart(6, '0');
 
             if (!ticketSummary[key]) {
                 ticketSummary[key] = {
                     start: serialNumber,
                     end: serialNumber,
                     count: 1,
-                    serials: [serialNumber]
+                    serials: [serialNumber],
+                    ticketname: ticket.ticketname
                 };
             } else {
                 ticketSummary[key].end = serialNumber;
@@ -187,9 +188,9 @@ const LotteryTicketGenerator = () => {
     );
     const downloadLink = usePDFSlip(selectedTicketSummary);
 
-    const toggleDropdown = (prefix) => {
-        setShowDropdown(prevState => ({ ...prevState, [prefix]: !prevState[prefix] }));
-    };
+    // const toggleDropdown = (prefix) => {
+    //     setShowDropdown(prevState => ({ ...prevState, [prefix]: !prevState[prefix] }));
+    // };
 
     return (
         <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-6'>
@@ -284,8 +285,8 @@ const LotteryTicketGenerator = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.entries(ticketSub).map(([key, { start, end, count, serials }]) => {
-                            const [prefix, ticketname] = key.split('-');
+                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname }]) => {
+                            const [prefix, _, numberGroup] = key.split('-');
                             return (
                                 <tr key={key}>
                                     <td className="border border-gray-400 px-4 py-2">
@@ -323,13 +324,13 @@ const LotteryTicketGenerator = () => {
                                     <td className="border border-gray-400 px-4 py-2">{count}</td>
                                     <td className="border border-gray-400 px-4 py-2">
                                         <button
-                                            onClick={() => handleUpdateTicket(ticket)}
+                                            onClick={() => handleUpdateTicket(key)}
                                             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                                         >
                                             Update
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteTicket(ticket.id)}
+                                            onClick={() => handleDeleteTicket(key)}
                                             className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded ml-2"
                                         >
                                             Delete
