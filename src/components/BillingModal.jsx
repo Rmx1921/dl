@@ -10,15 +10,29 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
     const [ticketsToShow, setTicketsToShow] = useState(20);
+    const [ticketNames, setTicketNames] = useState([]);
+const [selectedTicketName, setSelectedTicketName] = useState('');
 
     useEffect(() => {
         async function fetchTickets() {
             const ticketsFromDB = await getAllTicketsFromDB();
             setAllTickets(ticketsFromDB);
+            const uniqueTicketNames = [...new Set(ticketsFromDB.map(ticket => ticket.ticketname))];
+            setTicketNames(uniqueTicketNames);
         }
 
         fetchTickets();
     }, []);
+
+    const handleTicketNameChange = (event) => {
+        setSelectedTicketName(event.target.value);
+        if (event.target.value) {
+            const filteredResults = searchResults.filter(ticket => ticket.ticketname === event.target.value);
+            setDisplayedTickets(filteredResults.slice(0, ticketsToShow));
+        } else {
+            setDisplayedTickets(searchResults.slice(0, ticketsToShow));
+        }
+    };
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -26,12 +40,12 @@ const BillingModal = ({ isOpen, onClose }) => {
                 searchTickets();
             }
         }, 300);
-
+    
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, allTickets]);
+    }, [searchQuery, allTickets, selectedTicketName]);
 
     const searchTickets = () => {
-        if (searchQuery.trim() === '') {
+        if (searchQuery.trim() === '' && !selectedTicketName) {
             setSearchResults([]);
             setDisplayedTickets([]);
             return;
@@ -40,7 +54,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         const searchQueryLowerCase = searchQuery.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
             const [serialPart, numberPart] = searchQueryLowerCase.split('-');
-
+    
             const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
     
             const numberMatch = numberPart
@@ -52,7 +66,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                 ticket.ticketname.toLowerCase().includes(searchQueryLowerCase) ||
                 ticket.serialNumber.toLowerCase().includes(searchQueryLowerCase);
     
-            return (serialMatch && numberMatch) || otherFieldsMatch;
+            const ticketNameMatch = selectedTicketName ? ticket.ticketname === selectedTicketName : true;
+    
+            return ((serialMatch && numberMatch) || otherFieldsMatch) && ticketNameMatch;
         });
     
         setSearchResults(filteredTickets);
@@ -116,6 +132,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                 <div className="bg-white p-6 rounded-lg max-w-4xl w-full flex">
                     <div className="w-1/2 p-4">
                         <h2 className="text-lg font-bold mb-4">Billing Information</h2>
+                        <div className='flex flex-row gap-3'>
                         <div className="mb-4">
                             <input
                                 type="text"
@@ -124,6 +141,19 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 onChange={handleSearchInputChange}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-md"
                             />
+                        </div>
+                        <div className="mb-4">
+                                <select
+                                    value={selectedTicketName}
+                                    onChange={handleTicketNameChange}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                >
+                                    <option value="">Ticket Name</option>
+                                    {ticketNames.map((name, index) => (
+                                        <option key={index} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                         <div className="mb-4">
                             <input
