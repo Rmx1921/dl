@@ -4,12 +4,12 @@ import usePDFSlip from './usePDFSlip';
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState({});
+    const [searchResults, setSearchResults] = useState([]);
     const [allTickets, setAllTickets] = useState([]);
-    const [displayedTickets, setDisplayedTickets] = useState({});
+    const [displayedTickets, setDisplayedTickets] = useState([]);
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
-    const [ticketsToShow, setTicketsToShow] = useState(5);
+    const [ticketsToShow, setTicketsToShow] = useState(20);
 
     useEffect(() => {
         async function fetchTickets() {
@@ -32,36 +32,44 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     const searchTickets = () => {
         if (searchQuery.trim() === '') {
-            setSearchResults({});
-            setDisplayedTickets({});
+            setSearchResults([]);
+            setDisplayedTickets([]);
             return;
         }
+    
         const searchQueryLowerCase = searchQuery.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
-            return (
-                ticket.serial.toLowerCase().includes(searchQueryLowerCase) ||
-                ticket.number.toString().includes(searchQueryLowerCase) ||
+            const [serialPart, numberPart] = searchQueryLowerCase.split('-');
+
+            const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
+    
+            const numberMatch = numberPart
+                ? ticket.number.toString().startsWith(numberPart)
+                : true;
+    
+            const otherFieldsMatch = 
+                ticket.id.toLowerCase().includes(searchQueryLowerCase) ||
                 ticket.ticketname.toLowerCase().includes(searchQueryLowerCase) ||
-                ticket.serialNumber.toLowerCase().includes(searchQueryLowerCase)
-            );
+                ticket.serialNumber.toLowerCase().includes(searchQueryLowerCase);
+    
+            return (serialMatch && numberMatch) || otherFieldsMatch;
         });
-
-        const groupedResults = filteredTickets.reduce((acc, ticket) => {
-            const key = ticket.serial.substring(0, 2);
-            if (!acc[key]) {
-                acc[key] = [];
-            }
-            acc[key].push(ticket);
-            return acc;
-        }, {});
-
-        setSearchResults(groupedResults);
-        setDisplayedTickets(groupedResults);
-        setTicketsToShow(5);
+    
+        setSearchResults(filteredTickets);
+        setDisplayedTickets(filteredTickets.slice(0, ticketsToShow));
     };
 
     const handleSearchInputChange = (event) => {
-        setSearchQuery(event.target.value);
+        let value = event.target.value;
+        if (event.nativeEvent.inputType === 'deleteContentBackward') {
+            if (value.length === 2 && searchQuery.charAt(2) === '-') {
+                value = value.charAt(0);
+            }
+        } else if (value.length === 2 && /^[a-zA-Z]{2}$/.test(value)) {
+            value = value.toUpperCase() + '-';
+        }
+        
+        setSearchQuery(value);
     };
 
     const handleBuyerNameChange = (event) => {
@@ -69,7 +77,8 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const handleLoadMore = () => {
-        setTicketsToShow(ticketsToShow + 5);
+        setTicketsToShow(prevTicketsToShow => prevTicketsToShow + 20);
+        setDisplayedTickets(searchResults.slice(0, ticketsToShow + 20));
     };
 
     const handleSelectTicket = (ticket) => {
@@ -135,36 +144,31 @@ const BillingModal = ({ isOpen, onClose }) => {
                     <div className="w-1/2 p-4 border-l border-gray-200">
                         <h2 className="text-lg font-bold mb-4">Search Results</h2>
                         <div className="max-h-96 overflow-y-auto">
-                            {Object.keys(searchResults).length > 0 ? (
+                            {displayedTickets.length > 0 ? (
                                 <div>
-                                    {Object.keys(displayedTickets).slice(0, ticketsToShow).map((prefix, index) => {
-                                        const tickets = displayedTickets[prefix];
-                                        const firstTicket = tickets[0];
-                                        const lastTicket = tickets[tickets.length - 1];
-                                        return (
-                                            <div key={index} className="my-2 border border-gray-200 p-2 rounded-md">
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={tickets.every(ticket => selectedTickets.has(ticket))}
-                                                        onChange={() => tickets.forEach(ticket => handleSelectTicket(ticket))}
-                                                        className="mr-2"
-                                                    />
-                                                    <span>
-                                                        {firstTicket.serial} - {firstTicket.number}, {firstTicket.ticketname}, {firstTicket.serialNumber} to {lastTicket.serial} - {lastTicket.number}, {lastTicket.ticketname}, {lastTicket.serialNumber}
-                                                    </span>
-                                                </div>
+                                    {displayedTickets.map((ticket, index) => (
+                                        <div key={index} className="my-2 border border-gray-200 p-2 rounded-md">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTickets.has(ticket)}
+                                                    onChange={() => handleSelectTicket(ticket)}
+                                                    className="mr-2"
+                                                />
+                                                <span>
+                                                    {ticket.id}, {ticket.serial} - {ticket.number}, {ticket.ticketname}, {ticket.serialNumber}
+                                                </span>
                                             </div>
-                                        );
-                                    })}
-                                    {Object.keys(displayedTickets).length > ticketsToShow && (
+                                        </div>
+                                    ))}
+                                    {searchResults.length > displayedTickets.length && (
                                         <button onClick={handleLoadMore} className="text-blue-500 hover:text-blue-700 cursor-pointer mt-2">
                                             Load More
                                         </button>
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-gray-500 text-sm">Enter Ticket serial no</p>
+                                <p className="text-gray-500 text-sm">Enter ticket serial, number, name, or ID</p>
                             )}
                         </div>
                     </div>
