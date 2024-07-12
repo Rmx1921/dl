@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber, state, drawDate) {
+    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
         this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
@@ -15,6 +15,7 @@ class Lottery {
         this.serialNumber = serialNumber;
         this.state = state;
         this.drawDate = drawDate;
+        this.identifier = identifier;
     }
 }
 
@@ -23,11 +24,12 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     let temp_first_lott_ser = firstSerial;
     let temp_first_lottery_num = firstNumber;
     const alphabet_limit = (lastSerial.charCodeAt(1) - firstSerial.charCodeAt(1)) + 1;
+    const identifier = `${firstSerial}-${lastSerial}-${firstNumber}-${lastNumber}-${ticketname}-${serialNumber}-${drawDate.toISOString()}`;
 
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -64,7 +66,6 @@ const LotteryTicketGenerator = () => {
     useEffect(() => {
         async function fetchTickets() {
             const ticketsFromDB = await getAllTicketsFromDB();
-            // Parse drawDate from string to Date object
             const parsedTickets = ticketsFromDB.map(ticket => ({
                 ...ticket,
                 drawDate: new Date(ticket.drawDate)
@@ -133,12 +134,18 @@ const LotteryTicketGenerator = () => {
         await updateTicketInDB(updatedTicket);
     };
 
-    const handleDeleteTicket = async (ticketId) => {
-        const filteredTickets = lotteryTickets.filter(ticket => ticket.id !== ticketId);
+    const handleDeleteTicket = async (identifier) => {
+        const filteredTickets = lotteryTickets.filter(ticket => ticket.identifier !== identifier);
         setLotteryTickets(filteredTickets);
-        await deleteTicketFromDB(ticketId);
-    };
 
+        const ticketsToDelete = lotteryTickets.filter(ticket => ticket.identifier === identifier);
+
+        for (let ticket of ticketsToDelete) {
+            await deleteTicketFromDB(ticket.id);
+        }
+
+        toast.success('Tickets deleted successfully.');
+    };
     const summarizeTicketsByPrefix = () => {
         const ticketSummary = {};
 
@@ -165,8 +172,7 @@ const LotteryTicketGenerator = () => {
         const ticketSummary = {};
 
         lotteryTickets.forEach(ticket => {
-            const prefix = ticket.serial[0];
-            const key = `${prefix}-${ticket.ticketname}-${Math.floor(ticket.number / 100)}-${ticket.drawDate}`;
+            const key = ticket.identifier;
             const serialNumber = ticket.serial + ticket.number.toString().padStart(6, '0');
 
             if (!ticketSummary[key]) {
@@ -176,7 +182,8 @@ const LotteryTicketGenerator = () => {
                     count: 1,
                     serials: [serialNumber],
                     ticketname: ticket.ticketname,
-                    drawDate: ticket.drawDate
+                    drawDate: ticket.drawDate,
+                    identifier: ticket.identifier
                 };
             } else {
                 ticketSummary[key].end = serialNumber;
@@ -251,53 +258,50 @@ const LotteryTicketGenerator = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate }]) => {
-                            const [prefix, _, numberGroup] = key.split('-');
-                            return (
-                                <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
-                                    <td className="px-4 py-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedSerials.includes(key)}
-                                            onChange={() => handleSelectSerial(key)}
-                                            className="form-checkbox h-5 w-5 text-blue-600"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-2">{ticketname}</td>
-                                    <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
-                                        {start}
-                                        {showDropdown[key] && (
-                                            <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48 z-10">
-                                                {serials.map(serial => (
-                                                    <div key={serial} className="px-4 py-2 hover:bg-gray-100">
-                                                        {serial}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
-                                        {end}
-                                    </td>
-                                    <td className="px-4 py-2">{count}</td>
-                                    <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
-                                    <td className="px-4 py-2">
-                                        <button
-                                            onClick={() => handleUpdateTicket(key)}
-                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm mr-2"
-                                        >
-                                            Update
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteTicket(key)}
-                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
+                            <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
+                                <td className="px-4 py-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSerials.includes(key)}
+                                        onChange={() => handleSelectSerial(key)}
+                                        className="form-checkbox h-5 w-5 text-blue-600"
+                                    />
+                                </td>
+                                <td className="px-4 py-2">{ticketname}</td>
+                                <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
+                                    {start}
+                                    {showDropdown[key] && (
+                                        <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48 z-10">
+                                            {serials.map(serial => (
+                                                <div key={serial} className="px-4 py-2 hover:bg-gray-100">
+                                                    {serial}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
+                                    {end}
+                                </td>
+                                <td className="px-4 py-2">{count}</td>
+                                <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
+                                <td className="px-4 py-2">
+                                    <button
+                                        onClick={() => handleUpdateTicket(key)}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm mr-2"
+                                    >
+                                        Update
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteTicket(identifier)}
+                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
