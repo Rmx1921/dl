@@ -113,19 +113,18 @@ const BillingModal = ({ isOpen, onClose }) => {
     const handleSelectTicket = (ticket, groupKey = null) => {
         setSelectedTickets(prevSelected => {
             const newSelected = new Set(prevSelected);
-
             if (groupKey) {
-                const [mainKey, subKey] = groupKey.split('|');
+                const [mainKey, subKey, groupIndex] = groupKey.split('|');
                 const mainGroup = searchResults.find(([key]) => key === mainKey);
-
                 if (mainGroup) {
                     let ticketsToToggle;
-                    if (subKey) {
+                    if (groupIndex !== undefined) {
+                        ticketsToToggle = groupTicketsInFives(mainGroup[1].subGroups[subKey])[parseInt(groupIndex)];
+                    } else if (subKey) {
                         ticketsToToggle = mainGroup[1].subGroups[subKey];
                     } else {
                         ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
                     }
-
                     const allSelected = ticketsToToggle.every(t => newSelected.has(t));
                     ticketsToToggle.forEach(t => {
                         if (allSelected) {
@@ -144,6 +143,17 @@ const BillingModal = ({ isOpen, onClose }) => {
             }
             return newSelected;
         });
+    };
+
+    const groupTicketsInFives = (tickets) => {
+        return tickets.reduce((acc, ticket, index) => {
+            const groupIndex = Math.floor(index / 5);
+            if (!acc[groupIndex]) {
+                acc[groupIndex] = [];
+            }
+            acc[groupIndex].push(ticket);
+            return acc;
+        }, []);
     };
 
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
@@ -194,10 +204,17 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     {displayedTickets.map(([mainKey, groupData]) => (
                                         <div key={mainKey} className="my-2 border border-gray-200 p-2 rounded-md">
                                             <div className="flex items-center cursor-pointer">
-                                                <input type="checkbox" checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))} onChange={() => handleSelectTicket(null, mainKey)} className="mr-2" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))} 
+                                                    onChange={() => handleSelectTicket(null, mainKey)} 
+                                                    className="mr-2" 
+                                                />
                                                 <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
                                                     {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
-                                                    {groupData && groupData.info ? `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${groupData.info.drawDate}]` : '(No info available)'}
+                                                    {groupData && groupData.info ? 
+                                                        `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${groupData.info.drawDate}]` 
+                                                        : '(No info available)'}
                                                 </span>
                                             </div>
                                             {expandedGroups.has(mainKey) && (
@@ -205,17 +222,47 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                     {Object.entries(groupData.subGroups).map(([subKey, tickets]) => (
                                                         <div key={subKey} className="my-1">
                                                             <div className="flex items-center cursor-pointer">
-                                                                <input type="checkbox" checked={tickets.every(t => selectedTickets.has(t))} onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)} className="mr-2" />
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    checked={tickets.every(t => selectedTickets.has(t))} 
+                                                                    onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)} 
+                                                                    className="mr-2" 
+                                                                />
                                                                 <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}`)} className="flex-grow">
                                                                     {expandedGroups.has(`${mainKey}-${subKey}`) ? '▼' : '▶'}{' '}{subKey}
                                                                 </span>
                                                             </div>
                                                             {expandedGroups.has(`${mainKey}-${subKey}`) && (
                                                                 <div className="ml-6 mt-2">
-                                                                    {tickets.map((ticket, ticketIndex) => (
-                                                                        <div key={ticketIndex} className="my-1">
-                                                                            <input type="checkbox" checked={selectedTickets.has(ticket)} onChange={() => handleSelectTicket(ticket)} className="mr-2" />
-                                                                            <span>{ticket.serial}-{ticket.number}</span>
+                                                                    {groupTicketsInFives(tickets).map((ticketGroup, groupIndex) => (
+                                                                        <div key={groupIndex} className="my-1">
+                                                                            <div className="flex items-center cursor-pointer">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={ticketGroup.every(t => selectedTickets.has(t))}
+                                                                                    onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
+                                                                                    className="mr-2"
+                                                                                />
+                                                                                <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}-${groupIndex}`)}>
+                                                                                    {expandedGroups.has(`${mainKey}-${subKey}-${groupIndex}`) ? '▼' : '▶'}{' '}
+                                                                                    {ticketGroup[0].serial}-{ticketGroup[0].number} to {ticketGroup[ticketGroup.length-1].serial}-{ticketGroup[ticketGroup.length-1].number}
+                                                                                </span>
+                                                                            </div>
+                                                                            {expandedGroups.has(`${mainKey}-${subKey}-${groupIndex}`) && (
+                                                                                <div className="ml-6 mt-2">
+                                                                                    {ticketGroup.map((ticket, ticketIndex) => (
+                                                                                        <div key={ticketIndex} className="my-1">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={selectedTickets.has(ticket)}
+                                                                                                onChange={() => handleSelectTicket(ticket)}
+                                                                                                className="mr-2"
+                                                                                            />
+                                                                                            <span>{ticket.serial}-{ticket.number}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     ))}
                                                                 </div>
