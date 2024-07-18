@@ -208,7 +208,7 @@ const LotteryTicketGenerator = () => {
 
     return (
         <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-8'>
-            {/* <h1 className="text-3xl font-bold text-white mb-6 text-center">Lottery Ticket Generator</h1> */}
+            <h1 className="text-3xl font-bold text-white mb-6 text-center">Devan Lottery</h1>
             <div className='p-6 mb-8'>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
                     <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} />
@@ -248,7 +248,7 @@ const LotteryTicketGenerator = () => {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-200">
-                            <th className="px-4 py-2 text-left">Select</th>
+                            {/* <th className="px-4 py-2 text-left">Select</th> */}
                             <th className="px-4 py-2 text-left">Ticket Name</th>
                             <th className="px-4 py-2 text-left">Start Serial</th>
                             <th className="px-4 py-2 text-left">End Serial</th>
@@ -260,14 +260,14 @@ const LotteryTicketGenerator = () => {
                     <tbody>
                         {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
                             <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
-                                <td className="px-4 py-2">
+                                {/* <td className="px-4 py-2">
                                     <input
                                         type="checkbox"
                                         checked={selectedSerials.includes(key)}
                                         onChange={() => handleSelectSerial(key)}
                                         className="form-checkbox h-5 w-5 text-blue-600"
                                     />
-                                </td>
+                                </td> */}
                                 <td className="px-4 py-2">{ticketname}</td>
                                 <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
                                     {start}

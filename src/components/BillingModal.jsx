@@ -10,24 +10,24 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
     const [ticketsToShow, setTicketsToShow] = useState(20);
-    const [ticketNames, setTicketNames] = useState([]);
-const [selectedTicketName, setSelectedTicketName] = useState('');
+    const [drawDates, setDrawDates] = useState([]);
+    const [selectedDrawDate, setSelectedDrawDate] = useState('');
 
     useEffect(() => {
         async function fetchTickets() {
             const ticketsFromDB = await getAllTicketsFromDB();
             setAllTickets(ticketsFromDB);
-            const uniqueTicketNames = [...new Set(ticketsFromDB.map(ticket => ticket.ticketname))];
-            setTicketNames(uniqueTicketNames);
+            const uniqueDrawDates = [...new Set(ticketsFromDB.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
+            setDrawDates(uniqueDrawDates);
         }
 
         fetchTickets();
     }, []);
 
-    const handleTicketNameChange = (event) => {
-        setSelectedTicketName(event.target.value);
+    const handleDrawDateChange = (event) => {
+        setSelectedDrawDate(event.target.value);
         if (event.target.value) {
-            const filteredResults = searchResults.filter(ticket => ticket.ticketname === event.target.value);
+            const filteredResults = searchResults.filter(ticket => new Date(ticket.drawDate).toISOString().split('T')[0] === event.target.value);
             setDisplayedTickets(filteredResults.slice(0, ticketsToShow));
         } else {
             setDisplayedTickets(searchResults.slice(0, ticketsToShow));
@@ -42,10 +42,10 @@ const [selectedTicketName, setSelectedTicketName] = useState('');
         }, 300);
     
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, allTickets, selectedTicketName]);
+    }, [searchQuery, allTickets, selectedDrawDate]);
 
     const searchTickets = () => {
-        if (searchQuery.trim() === '' && !selectedTicketName) {
+        if (searchQuery.trim() === '' && !selectedDrawDate) {
             setSearchResults([]);
             setDisplayedTickets([]);
             return;
@@ -66,9 +66,9 @@ const [selectedTicketName, setSelectedTicketName] = useState('');
                 ticket.ticketname.toLowerCase().includes(searchQueryLowerCase) ||
                 ticket.serialNumber.toLowerCase().includes(searchQueryLowerCase);
     
-            const ticketNameMatch = selectedTicketName ? ticket.ticketname === selectedTicketName : true;
+            const drawDateMatch = selectedDrawDate ? new Date(ticket.drawDate).toISOString().split('T')[0] === selectedDrawDate : true;
     
-            return ((serialMatch && numberMatch) || otherFieldsMatch) && ticketNameMatch;
+            return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
     
         setSearchResults(filteredTickets);
@@ -133,24 +133,24 @@ const [selectedTicketName, setSelectedTicketName] = useState('');
                     <div className="w-1/2 p-4">
                         <h2 className="text-lg font-bold mb-4">Billing Information</h2>
                         <div className='flex flex-row gap-3'>
-                        <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search Ticket Serial..."
-                                value={searchQuery}
-                                onChange={handleSearchInputChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                            />
-                        </div>
-                        <div className="mb-4">
+                            <div className="mb-4">
+                                <input
+                                    type="text"
+                                    placeholder="Search Ticket Serial..."
+                                    value={searchQuery}
+                                    onChange={handleSearchInputChange}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                />
+                            </div>
+                            <div className="mb-4">
                                 <select
-                                    value={selectedTicketName}
-                                    onChange={handleTicketNameChange}
+                                    value={selectedDrawDate}
+                                    onChange={handleDrawDateChange}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-md"
                                 >
-                                    <option value="">Ticket Name</option>
-                                    {ticketNames.map((name, index) => (
-                                        <option key={index} value={name}>{name}</option>
+                                    <option value="">Draw Date</option>
+                                    {drawDates.map((date, index) => (
+                                        <option key={index} value={date}>{date}</option>
                                     ))}
                                 </select>
                             </div>
@@ -198,7 +198,7 @@ const [selectedTicketName, setSelectedTicketName] = useState('');
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-gray-500 text-sm">Enter ticket serial, number, name, or ID</p>
+                                <p className="text-gray-500 text-sm">Enter ticket serial, number, draw date, or ID</p>
                             )}
                         </div>
                     </div>
