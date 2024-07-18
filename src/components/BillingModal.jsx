@@ -12,6 +12,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [ticketsToShow, setTicketsToShow] = useState(20);
     const [drawDates, setDrawDates] = useState([]);
     const [selectedDrawDate, setSelectedDrawDate] = useState('');
+    const [expandedGroups, setExpandedGroups] = useState(new Set());
 
     useEffect(() => {
         async function fetchTickets() {
@@ -26,53 +27,69 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     const handleDrawDateChange = (event) => {
         setSelectedDrawDate(event.target.value);
-        if (event.target.value) {
-            const filteredResults = searchResults.filter(ticket => new Date(ticket.drawDate).toISOString().split('T')[0] === event.target.value);
-            setDisplayedTickets(filteredResults.slice(0, ticketsToShow));
-        } else {
-            setDisplayedTickets(searchResults.slice(0, ticketsToShow));
-        }
+        searchTickets(searchQuery, event.target.value);
     };
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             if (allTickets.length > 0) {
-                searchTickets();
+                searchTickets(searchQuery, selectedDrawDate);
             }
         }, 300);
-    
+
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery, allTickets, selectedDrawDate]);
 
-    const searchTickets = () => {
-        if (searchQuery.trim() === '' && !selectedDrawDate) {
+    const searchTickets = (query, drawDate) => {
+        if (query.trim() === '' && !drawDate) {
             setSearchResults([]);
             setDisplayedTickets([]);
             return;
         }
-    
-        const searchQueryLowerCase = searchQuery.toLowerCase();
+
+        const queryLowerCase = query.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
-            const [serialPart, numberPart] = searchQueryLowerCase.split('-');
-    
+            const [serialPart, numberPart] = queryLowerCase.split('-');
+
             const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
-    
+
             const numberMatch = numberPart
                 ? ticket.number.toString().startsWith(numberPart)
                 : true;
-    
-            const otherFieldsMatch = 
-                ticket.id.toLowerCase().includes(searchQueryLowerCase) ||
-                ticket.ticketname.toLowerCase().includes(searchQueryLowerCase) ||
-                ticket.serialNumber.toLowerCase().includes(searchQueryLowerCase);
-    
-            const drawDateMatch = selectedDrawDate ? new Date(ticket.drawDate).toISOString().split('T')[0] === selectedDrawDate : true;
-    
+
+            const otherFieldsMatch =
+                ticket.id.toLowerCase().includes(queryLowerCase) ||
+                ticket.ticketname.toLowerCase().includes(queryLowerCase) ||
+                ticket.serialNumber.toLowerCase().includes(queryLowerCase);
+
+            const drawDateMatch = drawDate ? new Date(ticket.drawDate).toISOString().split('T')[0] === drawDate : true;
+
             return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
-    
-        setSearchResults(filteredTickets);
-        setDisplayedTickets(filteredTickets.slice(0, ticketsToShow));
+
+        const groupedTickets = filteredTickets.reduce((acc, ticket) => {
+            const key = `${ticket.serial}-${ticket.ticketname}`;
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+            acc[key].push(ticket);
+            return acc;
+        }, {});
+
+        setSearchResults(Object.entries(groupedTickets));
+        setDisplayedTickets(Object.entries(groupedTickets).slice(0, ticketsToShow));
+    };
+
+    const handleGroupExpand = (groupKey) => {
+        setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(groupKey)) {
+                newSet.delete(groupKey);
+            } else {
+                newSet.add(groupKey);
+            }
+            return newSet;
+        });
     };
 
     const handleSearchInputChange = (event) => {
@@ -84,7 +101,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         } else if (value.length === 2 && /^[a-zA-Z]{2}$/.test(value)) {
             value = value.toUpperCase() + '-';
         }
-        
+
         setSearchQuery(value);
     };
 
@@ -97,13 +114,22 @@ const BillingModal = ({ isOpen, onClose }) => {
         setDisplayedTickets(searchResults.slice(0, ticketsToShow + 20));
     };
 
-    const handleSelectTicket = (ticket) => {
+    const handleSelectTicket = (ticket, groupKey = null) => {
         setSelectedTickets(prevSelected => {
             const newSelected = new Set(prevSelected);
-            if (newSelected.has(ticket)) {
-                newSelected.delete(ticket);
+            if (groupKey) {
+                const groupTickets = searchResults.find(([key]) => key === groupKey)[1];
+                if (groupTickets.every(t => newSelected.has(t))) {
+                    groupTickets.forEach(t => newSelected.delete(t));
+                } else {
+                    groupTickets.forEach(t => newSelected.add(t));
+                }
             } else {
-                newSelected.add(ticket);
+                if (newSelected.has(ticket)) {
+                    newSelected.delete(ticket);
+                } else {
+                    newSelected.add(ticket);
+                }
             }
             return newSelected;
         });
@@ -176,19 +202,40 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <div className="max-h-96 overflow-y-auto">
                             {displayedTickets.length > 0 ? (
                                 <div>
-                                    {displayedTickets.map((ticket, index) => (
-                                        <div key={index} className="my-2 border border-gray-200 p-2 rounded-md">
-                                            <div className="flex items-center">
+                                    {displayedTickets.map(([groupKey, tickets]) => (
+                                        <div key={groupKey} className="my-2 border border-gray-200 p-2 rounded-md">
+                                            <div className="flex items-center cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedTickets.has(ticket)}
-                                                    onChange={() => handleSelectTicket(ticket)}
+                                                    checked={tickets.every(t => selectedTickets.has(t))}
+                                                    onChange={() => handleSelectTicket(null, groupKey)}
                                                     className="mr-2"
                                                 />
-                                                <span>
-                                                    {ticket.id}, {ticket.serial} - {ticket.number}, {ticket.ticketname}, {ticket.serialNumber}
+                                                <span
+                                                    onClick={() => handleGroupExpand(groupKey)}
+                                                    className="flex-grow"
+                                                >
+                                                    {expandedGroups.has(groupKey) ? '▼' : '▶'}
+                                                    {' '}{tickets[0].serial} - {tickets[0].ticketname} ({tickets.length} tickets)
                                                 </span>
                                             </div>
+                                            {expandedGroups.has(groupKey) && (
+                                                <div className="ml-6 mt-2">
+                                                    {tickets.map((ticket, ticketIndex) => (
+                                                        <div key={ticketIndex} className="my-1">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedTickets.has(ticket)}
+                                                                onChange={() => handleSelectTicket(ticket)}
+                                                                className="mr-2"
+                                                            />
+                                                            <span>
+                                                                {ticket.serial} - {ticket.number}, {ticket.serialNumber}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                     {searchResults.length > displayedTickets.length && (
