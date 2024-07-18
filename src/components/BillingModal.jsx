@@ -21,7 +21,6 @@ const BillingModal = ({ isOpen, onClose }) => {
             const uniqueDrawDates = [...new Set(ticketsFromDB.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
             setDrawDates(uniqueDrawDates);
         }
-
         fetchTickets();
     }, []);
 
@@ -36,7 +35,6 @@ const BillingModal = ({ isOpen, onClose }) => {
                 searchTickets(searchQuery, selectedDrawDate);
             }
         }, 300);
-
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery, allTickets, selectedDrawDate]);
 
@@ -50,34 +48,33 @@ const BillingModal = ({ isOpen, onClose }) => {
         const queryLowerCase = query.toLowerCase();
         const filteredTickets = allTickets.filter(ticket => {
             const [serialPart, numberPart] = queryLowerCase.split('-');
-
             const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
-
-            const numberMatch = numberPart
-                ? ticket.number.toString().startsWith(numberPart)
-                : true;
-
-            const otherFieldsMatch =
-                ticket.id.toLowerCase().includes(queryLowerCase) ||
-                ticket.ticketname.toLowerCase().includes(queryLowerCase) ||
-                ticket.serialNumber.toLowerCase().includes(queryLowerCase);
-
+            const numberMatch = numberPart ? ticket.number.toString().startsWith(numberPart) : true;
+            const otherFieldsMatch = ticket.id.toLowerCase().includes(queryLowerCase) || ticket.ticketname.toLowerCase().includes(queryLowerCase) || ticket.serialNumber.toLowerCase().includes(queryLowerCase);
             const drawDateMatch = drawDate ? new Date(ticket.drawDate).toISOString().split('T')[0] === drawDate : true;
-
             return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
 
         const groupedTickets = filteredTickets.reduce((acc, ticket) => {
-            const key = `${ticket.serial}-${ticket.ticketname}`;
-            if (!acc[key]) {
-                acc[key] = [];
+            const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
+            const mainKey = `${startSerial}-${endSerial} (${startNumber}-${endNumber}) - ${ticketname}`;
+            if (!acc[mainKey]) {
+                acc[mainKey] = { info: { serialNumber, drawDate: new Date(drawDate).toLocaleDateString(), totalTickets: 0 }, subGroups: {} };
             }
-            acc[key].push(ticket);
+
+            const subKey = `${ticket.serial}-${startNumber} to ${ticket.serial}-${endNumber}`;
+            if (!acc[mainKey].subGroups[subKey]) {
+                acc[mainKey].subGroups[subKey] = [];
+            }
+
+            acc[mainKey].subGroups[subKey].push(ticket);
+            acc[mainKey].info.totalTickets += 1;
             return acc;
         }, {});
 
-        setSearchResults(Object.entries(groupedTickets));
-        setDisplayedTickets(Object.entries(groupedTickets).slice(0, ticketsToShow));
+        const results = Object.entries(groupedTickets);
+        setSearchResults(results);
+        setDisplayedTickets(results.slice(0, ticketsToShow));
     };
 
     const handleGroupExpand = (groupKey) => {
@@ -101,7 +98,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         } else if (value.length === 2 && /^[a-zA-Z]{2}$/.test(value)) {
             value = value.toUpperCase() + '-';
         }
-
         setSearchQuery(value);
     };
 
@@ -117,14 +113,29 @@ const BillingModal = ({ isOpen, onClose }) => {
     const handleSelectTicket = (ticket, groupKey = null) => {
         setSelectedTickets(prevSelected => {
             const newSelected = new Set(prevSelected);
+
             if (groupKey) {
-                const groupTickets = searchResults.find(([key]) => key === groupKey)[1];
-                if (groupTickets.every(t => newSelected.has(t))) {
-                    groupTickets.forEach(t => newSelected.delete(t));
-                } else {
-                    groupTickets.forEach(t => newSelected.add(t));
+                const [mainKey, subKey] = groupKey.split('|');
+                const mainGroup = searchResults.find(([key]) => key === mainKey);
+
+                if (mainGroup) {
+                    let ticketsToToggle;
+                    if (subKey) {
+                        ticketsToToggle = mainGroup[1].subGroups[subKey];
+                    } else {
+                        ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
+                    }
+
+                    const allSelected = ticketsToToggle.every(t => newSelected.has(t));
+                    ticketsToToggle.forEach(t => {
+                        if (allSelected) {
+                            newSelected.delete(t);
+                        } else {
+                            newSelected.add(t);
+                        }
+                    });
                 }
-            } else {
+            } else if (ticket) {
                 if (newSelected.has(ticket)) {
                     newSelected.delete(ticket);
                 } else {
@@ -138,11 +149,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
         const key = `${ticket.serial}-${ticket.ticketname}`;
         if (!acc[key]) {
-            acc[key] = {
-                start: ticket.serial + ticket.number.toString(),
-                end: ticket.serial + ticket.number.toString(),
-                count: 1,
-            };
+            acc[key] = { start: ticket.serial + ticket.number.toString(), end: ticket.serial + ticket.number.toString(), count: 1 };
         } else {
             acc[key].end = ticket.serial + ticket.number.toString();
             acc[key].count += 1;
@@ -160,20 +167,10 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <h2 className="text-lg font-bold mb-4">Billing Information</h2>
                         <div className='flex flex-row gap-3'>
                             <div className="mb-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search Ticket Serial..."
-                                    value={searchQuery}
-                                    onChange={handleSearchInputChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                                />
+                                <input type="text" placeholder="Search Ticket Serial..." value={searchQuery} onChange={handleSearchInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
                             </div>
                             <div className="mb-4">
-                                <select
-                                    value={selectedDrawDate}
-                                    onChange={handleDrawDateChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                                >
+                                <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300 rounded-md">
                                     <option value="">Draw Date</option>
                                     {drawDates.map((date, index) => (
                                         <option key={index} value={date}>{date}</option>
@@ -182,17 +179,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
                         <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Enter Buyer's Name"
-                                value={buyerName}
-                                onChange={handleBuyerNameChange}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                            />
+                            <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
                         </div>
-                        <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            Close
-                        </button>
+                        <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Close</button>
                         <div className='mt-4'>
                             {selectedTickets.size > 0 && buyerName.trim() !== '' && downloadLink}
                         </div>
@@ -202,36 +191,35 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <div className="max-h-96 overflow-y-auto">
                             {displayedTickets.length > 0 ? (
                                 <div>
-                                    {displayedTickets.map(([groupKey, tickets]) => (
-                                        <div key={groupKey} className="my-2 border border-gray-200 p-2 rounded-md">
+                                    {displayedTickets.map(([mainKey, groupData]) => (
+                                        <div key={mainKey} className="my-2 border border-gray-200 p-2 rounded-md">
                                             <div className="flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={tickets.every(t => selectedTickets.has(t))}
-                                                    onChange={() => handleSelectTicket(null, groupKey)}
-                                                    className="mr-2"
-                                                />
-                                                <span
-                                                    onClick={() => handleGroupExpand(groupKey)}
-                                                    className="flex-grow"
-                                                >
-                                                    {expandedGroups.has(groupKey) ? '▼' : '▶'}
-                                                    {' '}{tickets[0].serial} - {tickets[0].ticketname} ({tickets.length} tickets)
+                                                <input type="checkbox" checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))} onChange={() => handleSelectTicket(null, mainKey)} className="mr-2" />
+                                                <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
+                                                    {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
+                                                    {groupData && groupData.info ? `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${groupData.info.drawDate}]` : '(No info available)'}
                                                 </span>
                                             </div>
-                                            {expandedGroups.has(groupKey) && (
+                                            {expandedGroups.has(mainKey) && (
                                                 <div className="ml-6 mt-2">
-                                                    {tickets.map((ticket, ticketIndex) => (
-                                                        <div key={ticketIndex} className="my-1">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedTickets.has(ticket)}
-                                                                onChange={() => handleSelectTicket(ticket)}
-                                                                className="mr-2"
-                                                            />
-                                                            <span>
-                                                                {ticket.serial} - {ticket.number}, {ticket.serialNumber}
-                                                            </span>
+                                                    {Object.entries(groupData.subGroups).map(([subKey, tickets]) => (
+                                                        <div key={subKey} className="my-1">
+                                                            <div className="flex items-center cursor-pointer">
+                                                                <input type="checkbox" checked={tickets.every(t => selectedTickets.has(t))} onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)} className="mr-2" />
+                                                                <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}`)} className="flex-grow">
+                                                                    {expandedGroups.has(`${mainKey}-${subKey}`) ? '▼' : '▶'}{' '}{subKey}
+                                                                </span>
+                                                            </div>
+                                                            {expandedGroups.has(`${mainKey}-${subKey}`) && (
+                                                                <div className="ml-6 mt-2">
+                                                                    {tickets.map((ticket, ticketIndex) => (
+                                                                        <div key={ticketIndex} className="my-1">
+                                                                            <input type="checkbox" checked={selectedTickets.has(ticket)} onChange={() => handleSelectTicket(ticket)} className="mr-2" />
+                                                                            <span>{ticket.serial}-{ticket.number}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -239,9 +227,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                         </div>
                                     ))}
                                     {searchResults.length > displayedTickets.length && (
-                                        <button onClick={handleLoadMore} className="text-blue-500 hover:text-blue-700 cursor-pointer mt-2">
-                                            Load More
-                                        </button>
+                                        <button onClick={handleLoadMore} className="text-blue-500 hover:text-blue-700 cursor-pointer mt-2">Load More</button>
                                     )}
                                 </div>
                             ) : (
