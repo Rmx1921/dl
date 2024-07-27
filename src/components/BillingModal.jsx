@@ -145,6 +145,12 @@ const BillingModal = ({ isOpen, onClose }) => {
         });
     };
 
+    const handleReset =()=>{
+        setSelectedTickets(new Set());
+        setSelectedDrawDate('')
+        setSearchQuery('');
+    }
+
     const groupTicketsInFives = (tickets) => {
         return tickets.reduce((acc, ticket, index) => {
             const groupIndex = Math.floor(index / 5);
@@ -156,26 +162,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         }, []);
     };
     
-    // const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-    //     const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
-    //     const key = `${startSerial}-${endSerial}-${ticketname}-${startNumber}-${endNumber}`;
-        
-    //     if (!acc[key]) {
-    //         acc[key] = {
-    //             start: startNumber,
-    //             end: endNumber,
-    //             count: 1,
-    //             ticketname,
-    //             serialNumber,
-    //             drawDate: new Date(drawDate).toLocaleDateString(),
-    //             series: new Set([ticket.serial])
-    //         };
-    //     } else {
-    //         acc[key].count += 1;
-    //         acc[key].series.add(ticket.serial);
-    //     }
-    //     return acc;
-    // }, {});
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
         const mainKey = `${startSerial}-${endSerial}-${ticketname}`;
@@ -205,6 +191,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         
         return acc;
     }, {});
+    console.log(selectedTicketSummary,'idi')
     
     const downloadLink = usePDFSlip(selectedTicketSummary, buyerName);
 
@@ -225,6 +212,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                                         <option key={index} value={date}>{date}</option>
                                     ))}
                                 </select>
+                            </div>
+                            <div className='mt-1'>
+                                <button className='bg-red-500 p-1 rounded-md text-white hover:bg-red-600' onClick={handleReset}>Reset</button>
                             </div>
                         </div>
                         <div className="mb-4">
