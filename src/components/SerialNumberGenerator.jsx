@@ -55,6 +55,14 @@ const LotteryTicketGenerator = () => {
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [drawDate, setDrawDate] = useState(new Date());
 
+    const inputRefs = useRef([]);
+
+    const handleEnterPress = (index) => {
+        if (index < inputRefs.current.length - 1) {
+            inputRefs.current[index + 1].focus();
+        }
+    };
+
     const openBillingModal = () => {
         setIsBillingModalOpen(true);
     };
@@ -211,12 +219,12 @@ const LotteryTicketGenerator = () => {
             <h1 className="text-3xl font-bold text-white mb-6 text-center">Devan Lottery</h1>
             <div className='p-6 mb-8'>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} />
-                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} />
-                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} />
-                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} />
-                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
-                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} />
+                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(0)} ref={(el) => inputRefs.current[0] = el} />
+                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(1)} ref={(el) => inputRefs.current[1] = el}/>
+                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} onEnterPress={() => handleEnterPress(2)} ref={(el) => inputRefs.current[2] = el} />
+                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} onEnterPress={() => handleEnterPress(3)} ref={(el) => inputRefs.current[3] = el}/>
+                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} onEnterPress={() => handleEnterPress(4)} ref={(el) => inputRefs.current[4] = el}/>
+                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} onEnterPress={() => handleEnterPress(5)} ref={(el) => inputRefs.current[5] = el} />
                     <div className="mb-4">
                         <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>
                         <DatePicker
@@ -310,16 +318,23 @@ const LotteryTicketGenerator = () => {
     );
 };
 
-const InputField = ({ label, type = "text", value, onChange }) => (
+const InputField = React.forwardRef(({ label, type = "text", value, onChange, onEnterPress }, ref) => (
     <div className="mb-4">
         <label className="block mb-2 font-bold text-gray-700">{label}:</label>
         <input
             type={type}
             value={value}
             onChange={onChange}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onEnterPress();
+                }
+            }}
+            ref={ref}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
     </div>
-);
+));
 
 export default LotteryTicketGenerator;
