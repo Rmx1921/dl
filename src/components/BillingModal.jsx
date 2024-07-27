@@ -155,18 +155,57 @@ const BillingModal = ({ isOpen, onClose }) => {
             return acc;
         }, []);
     };
-
+    
+    // const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
+    //     const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
+    //     const key = `${startSerial}-${endSerial}-${ticketname}-${startNumber}-${endNumber}`;
+        
+    //     if (!acc[key]) {
+    //         acc[key] = {
+    //             start: startNumber,
+    //             end: endNumber,
+    //             count: 1,
+    //             ticketname,
+    //             serialNumber,
+    //             drawDate: new Date(drawDate).toLocaleDateString(),
+    //             series: new Set([ticket.serial])
+    //         };
+    //     } else {
+    //         acc[key].count += 1;
+    //         acc[key].series.add(ticket.serial);
+    //     }
+    //     return acc;
+    // }, {});
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-        const key = `${ticket.serial}-${ticket.ticketname}`;
-        if (!acc[key]) {
-            acc[key] = { start: ticket.serial + ticket.number.toString(), end: ticket.serial + ticket.number.toString(), count: 1 };
-        } else {
-            acc[key].end = ticket.serial + ticket.number.toString();
-            acc[key].count += 1;
+        const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
+        const mainKey = `${startSerial}-${endSerial}-${ticketname}`;
+        const subKey = `${startNumber}-${endNumber}`;
+        
+        if (!acc[mainKey]) {
+            acc[mainKey] = {
+                ticketname,
+                serialNumber,
+                drawDate: new Date(drawDate).toLocaleDateString(),
+                series: new Set([ticket.serial]),
+                ranges: {}
+            };
         }
+    
+        if (!acc[mainKey].ranges[subKey]) {
+            acc[mainKey].ranges[subKey] = {
+                start: startNumber,
+                end: endNumber,
+                count: 1
+            };
+        } else {
+            acc[mainKey].ranges[subKey].count += 1;
+        }
+    
+        acc[mainKey].series.add(ticket.serial);
+        
         return acc;
     }, {});
-
+    
     const downloadLink = usePDFSlip(selectedTicketSummary, buyerName);
 
     return (

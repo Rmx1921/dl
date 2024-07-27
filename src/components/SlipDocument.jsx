@@ -2,19 +2,32 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
-    page: { padding: 30 },
+    page: { padding: 20, fontFamily: 'Helvetica' },
     header: { marginBottom: 10, textAlign: 'center' },
-    section: { marginBottom: 10 },
+    malayalamText: { fontFamily: 'Malayalam', fontSize: 14 },
+    monospaceText: { fontFamily: 'Courier', fontSize: 10 },
+    section: { marginBottom: 5 },
     boldText: { fontWeight: 'bold' },
-    borderBottom: { borderBottom: '1px solid black', marginBottom: 10 },
-    textCenter: { textAlign: 'center' }
+    row: { flexDirection: 'row', justifyContent: 'space-between' },
+    column: { flexDirection: 'column' },
+    borderBottom: { borderBottom: '1px dashed black', marginVertical: 5 },
+    barcode: { height: 30, marginBottom: 5 },
+    smallText: { fontSize: 8 },
+    centerText: { textAlign: 'center' },
+    tableHeader: { flexDirection: 'row', justifyContent: 'space-between', fontWeight: 'bold' },
+    tableRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    columnText: { width: '25%', textAlign: 'center' }
 });
 
-const SlipDocument = ({ ticketSummary, currentDateTime,name}) => (
-    <Document>
-        <Page size="A4" style={styles.page}>
+const SlipDocument = ({ ticketSummary, currentDateTime, name }) => {
+
+    const sortedGroups = Object.entries(ticketSummary)
+    .sort(([, a], [, b]) => b.serialNumber.localeCompare(a.serialNumber));
+
+    return (
+        <Document>
+        <Page size="A5" style={styles.page}>
             <View style={[styles.section, styles.header]}>
-                <Text style={styles.boldText}>xxxxxxxxxxxxxxxxxx</Text>
                 <Text>Kuthuparamba, Mob: xxxxxxxxxx</Text>
             </View>
             <View style={styles.section}>
@@ -25,29 +38,26 @@ const SlipDocument = ({ ticketSummary, currentDateTime,name}) => (
             </View>
             <View style={styles.borderBottom} />
             <View style={styles.section}>
-                <Text style={styles.boldText}>S.No Lottery Draw Qty Rate Value</Text>
-                {Object.entries(ticketSummary).map(([key, summary], index) => (
-                    <View key={index} style={styles.section}>
-                        <Text>{index + 1} {key}</Text>
-                        <Text>{summary.start} to {summary.end} - {summary.count} tickets</Text>
+                {sortedGroups.map(([key, group], index) => (
+                    <View key={key} style={styles.section}>
+                        <Text style={styles.boldText}>
+                            {index + 1}. {group.ticketname} {group.serialNumber} - Draw date: {group.drawDate}
+                        </Text>
+                        <Text>({Array.from(group.series).sort().join(',')})</Text>
+                        {Object.entries(group.ranges)
+                            .sort(([a], [b]) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]))
+                            .map(([rangeKey, range]) => (
+                                <Text key={rangeKey} style={styles.monospaceText}>
+                                    {`${range.start.padStart(6, '0')}-${range.end.padStart(6, '0')}    ${range.count.toString().padStart(3, ' ')}         32.55    ${(range.count * 32.55).toFixed(2).padStart(9, ' ')}`}
+                                </Text>
+                            ))
+                        }
                     </View>
                 ))}
             </View>
             <View style={styles.borderBottom} />
-            <View style={styles.section}>
-                <Text>Total Tickets: {Object.values(ticketSummary).reduce((acc, curr) => acc + curr.count, 0)}</Text>
-                <Text>Net Amt: 19692.75</Text>
-                <Text>G.Total: 21645.75</Text>
-                <Text>Cash: 21646</Text>
-                <Text>PWT: 0</Text>
-                <Text>Cur Balance: 145066.80</Text>
-            </View>
-            <View style={[styles.section, styles.textCenter]}>
-                <Text>Dc Claimed Within 30 Days.</Text>
-                <Text>Page: 1</Text>
-            </View>
         </Page>
     </Document>
-);
-
+    );
+};
 export default SlipDocument;
