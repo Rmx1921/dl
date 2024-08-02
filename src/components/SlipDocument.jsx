@@ -50,9 +50,14 @@ const SlipDocument = ({ ticketSummary, currentDateTime, name }) => {
                                 {index + 1}. {group.ticketname} - Draw date: {group.drawDate}
                             </Text>
                             <Text>({group.series})</Text>
-                            <Text style={styles.monospaceText}>
-                                {`${group.startNumber.padStart(6, '0')}-${group.endNumber.padStart(6, '0')}    ${group.count.toString().padStart(3, ' ')}         ${group.price.toFixed(2)}    ${group.totalAmount.toFixed(2).padStart(9, ' ')}`}
-                            </Text>
+                            {group.ranges.map((range, rangeIndex) => (
+                                <Text key={rangeIndex} style={styles.monospaceText}>
+                                    {`${range.startNumber.padStart(6, '0')}-${range.endNumber.padStart(6, '0')}    ${range.count.toString().padStart(3, ' ')}         ${range.price.toFixed(2)}    ${(range.count * range.price).toFixed(2).padStart(9, ' ')}`}
+                                </Text>
+                            ))}
+                            {/* <Text style={[styles.monospaceText, styles.boldText]}>
+                                {`${'Total:'.padStart(30, ' ')}    ${group.totalAmount.toFixed(2).padStart(9, ' ')}`}
+                            </Text> */}
                         </View>
                     ))}
                 </View>
