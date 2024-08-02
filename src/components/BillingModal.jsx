@@ -164,36 +164,40 @@ const BillingModal = ({ isOpen, onClose }) => {
     
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
-        const mainKey = `${startSerial}-${endSerial}-${ticketname}`;
-        const subKey = `${startNumber}-${endNumber}`;
+        const mainKey = `${startSerial}-${endSerial}-${ticketname}-${startNumber}-${endNumber}`;
         
         if (!acc[mainKey]) {
             acc[mainKey] = {
                 ticketname,
                 serialNumber,
                 drawDate: new Date(drawDate).toLocaleDateString(),
-                series: new Set([ticket.serial]),
-                ranges: {}
+                startNumber,
+                endNumber,
+                series: new Set(),
+                count: 0,
+                price: 32.55 // Assuming a fixed price, adjust as needed
             };
-        }
-    
-        if (!acc[mainKey].ranges[subKey]) {
-            acc[mainKey].ranges[subKey] = {
-                start: startNumber,
-                end: endNumber,
-                count: 1
-            };
-        } else {
-            acc[mainKey].ranges[subKey].count += 1;
         }
     
         acc[mainKey].series.add(ticket.serial);
+        acc[mainKey].count += 1;
         
         return acc;
     }, {});
-    console.log(selectedTicketSummary,'idi')
     
-    const downloadLink = usePDFSlip(selectedTicketSummary, buyerName);
+    const sortedSummary = Object.entries(selectedTicketSummary)
+        .sort(([keyA], [keyB]) => {
+            const [startA] = keyA.split('-');
+            const [startB] = keyB.split('-');
+            return startA.localeCompare(startB);
+        })
+        .map(([key, value]) => ({
+            ...value,
+            series: Array.from(value.series).sort().join(','),
+            totalAmount: value.count * value.price
+        }));  
+    
+    const downloadLink = usePDFSlip(sortedSummary, buyerName);
 
     return (
         isOpen && (
