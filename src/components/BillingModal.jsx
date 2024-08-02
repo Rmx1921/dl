@@ -164,40 +164,60 @@ const BillingModal = ({ isOpen, onClose }) => {
     
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
-        const mainKey = `${startSerial}-${endSerial}-${ticketname}-${startNumber}-${endNumber}`;
+        const seriesKey = `${startSerial}-${endSerial}-${ticketname}-${drawDate}`;
         
-        if (!acc[mainKey]) {
-            acc[mainKey] = {
+        if (!acc[seriesKey]) {
+            acc[seriesKey] = {
                 ticketname,
                 serialNumber,
                 drawDate: new Date(drawDate).toLocaleDateString(),
-                startNumber,
-                endNumber,
                 series: new Set(),
-                count: 0,
-                price: 32.55 // Assuming a fixed price, adjust as needed
+                ranges: []
             };
         }
     
-        acc[mainKey].series.add(ticket.serial);
-        acc[mainKey].count += 1;
+        acc[seriesKey].series.add(ticket.serial);
+        
+        const existingRange = acc[seriesKey].ranges.find(r => r.startNumber === startNumber && r.endNumber === endNumber);
+        if (existingRange) {
+            existingRange.count += 1;
+        } else {
+            acc[seriesKey].ranges.push({
+                startNumber,
+                endNumber,
+                count: 1,
+                price: 32.55
+            });
+        }
         
         return acc;
     }, {});
-    
     const sortedSummary = Object.entries(selectedTicketSummary)
-        .sort(([keyA], [keyB]) => {
-            const [startA] = keyA.split('-');
-            const [startB] = keyB.split('-');
-            return startA.localeCompare(startB);
-        })
-        .map(([key, value]) => ({
-            ...value,
-            series: Array.from(value.series).sort().join(','),
-            totalAmount: value.count * value.price
-        }));  
-    
-    const downloadLink = usePDFSlip(sortedSummary, buyerName);
+    .reduce((acc, [key, value]) => {
+        const seriesKey = Array.from(value.series).sort().join(',');
+        if (!acc[seriesKey]) {
+            acc[seriesKey] = {
+                ticketname: value.ticketname,
+                drawDate: value.drawDate,
+                series: seriesKey,
+                ranges: [],
+                serialNumbers: new Set()
+            };
+        }
+        acc[seriesKey].ranges.push(...value.ranges);
+        acc[seriesKey].serialNumbers.add(value.serialNumber);
+        return acc;
+    }, {});
+
+const finalSortedSummary = Object.values(sortedSummary)
+    .sort((a, b) => a.series.localeCompare(b.series))
+    .map(group => ({
+        ...group,
+        ranges: group.ranges.sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
+        serialNumber: Array.from(group.serialNumbers).join(', '),
+        totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
+    }));
+    const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
 
     return (
         isOpen && (
