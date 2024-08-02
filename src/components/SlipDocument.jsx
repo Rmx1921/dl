@@ -20,44 +20,46 @@ const styles = StyleSheet.create({
 });
 
 const SlipDocument = ({ ticketSummary, currentDateTime, name }) => {
-
-    const sortedGroups = Object.entries(ticketSummary)
-    .sort(([, a], [, b]) => b.serialNumber.localeCompare(a.serialNumber));
+    if (!ticketSummary || ticketSummary.length === 0) {
+        return (
+            <Document>
+                <Page size="A5" style={styles.page}>
+                    <Text>No data available</Text>
+                </Page>
+            </Document>
+        );
+    }
 
     return (
         <Document>
-        <Page size="A5" style={styles.page}>
-            <View style={[styles.section, styles.header]}>
-                <Text>Kuthuparamba, Mob: xxxxxxxxxx</Text>
-            </View>
-            <View style={styles.section}>
-                <Text>Date: {currentDateTime.toLocaleDateString()}</Text>
-                <Text>Time: {currentDateTime.toLocaleTimeString()}</Text>
-                <Text>Name: {name}</Text>
-                <Text>Mob: 8848780005</Text>
-            </View>
-            <View style={styles.borderBottom} />
-            <View style={styles.section}>
-                {sortedGroups.map(([key, group], index) => (
-                    <View key={key} style={styles.section}>
-                        <Text style={styles.boldText}>
-                            {index + 1}. {group.ticketname} {group.serialNumber} - Draw date: {group.drawDate}
-                        </Text>
-                        <Text>({Array.from(group.series).sort().join(',')})</Text>
-                        {Object.entries(group.ranges)
-                            .sort(([a], [b]) => parseInt(a.split('-')[0]) - parseInt(b.split('-')[0]))
-                            .map(([rangeKey, range]) => (
-                                <Text key={rangeKey} style={styles.monospaceText}>
-                                    {`${range.start.padStart(6, '0')}-${range.end.padStart(6, '0')}    ${range.count.toString().padStart(3, ' ')}         32.55    ${(range.count * 32.55).toFixed(2).padStart(9, ' ')}`}
-                                </Text>
-                            ))
-                        }
-                    </View>
-                ))}
-            </View>
-            <View style={styles.borderBottom} />
-        </Page>
-    </Document>
+            <Page size="A5" style={styles.page}>
+                <View style={[styles.section, styles.header]}>
+                    <Text>Kuthuparamba, Mob: xxxxxxxxxx</Text>
+                </View>
+                <View style={styles.section}>
+                    <Text>Date: {currentDateTime.toLocaleDateString()}</Text>
+                    <Text>Time: {currentDateTime.toLocaleTimeString()}</Text>
+                    <Text>Name: {name}</Text>
+                    <Text>Mob: 8848780005</Text>
+                </View>
+                <View style={styles.borderBottom} />
+                <View style={styles.section}>
+                    {ticketSummary.map((group, index) => (
+                        <View key={index} style={styles.section}>
+                            <Text style={styles.boldText}>
+                                {index + 1}. {group.ticketname} - Draw date: {group.drawDate}
+                            </Text>
+                            <Text>({group.series})</Text>
+                            <Text style={styles.monospaceText}>
+                                {`${group.startNumber.padStart(6, '0')}-${group.endNumber.padStart(6, '0')}    ${group.count.toString().padStart(3, ' ')}         ${group.price.toFixed(2)}    ${group.totalAmount.toFixed(2).padStart(9, ' ')}`}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+                <View style={styles.borderBottom} />
+            </Page>
+        </Document>
     );
 };
+
 export default SlipDocument;
