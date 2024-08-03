@@ -145,7 +145,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         });
     };
 
-    const handleReset =()=>{
+    const handleReset = () => {
         setSelectedTickets(new Set());
         setSelectedDrawDate('')
         setSearchQuery('');
@@ -161,62 +161,87 @@ const BillingModal = ({ isOpen, onClose }) => {
             return acc;
         }, []);
     };
-    
+
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
-        const seriesKey = `${startSerial}-${endSerial}-${ticketname}-${drawDate}`;
-        
+        const seriesKey = `${ticketname}-${drawDate}`;
+
         if (!acc[seriesKey]) {
             acc[seriesKey] = {
                 ticketname,
-                serialNumber,
                 drawDate: new Date(drawDate).toLocaleDateString(),
-                series: new Set(),
-                ranges: []
+                ranges: {}
             };
         }
-    
-        acc[seriesKey].series.add(ticket.serial);
-        
-        const existingRange = acc[seriesKey].ranges.find(r => r.startNumber === startNumber && r.endNumber === endNumber);
-        if (existingRange) {
-            existingRange.count += 1;
-        } else {
-            acc[seriesKey].ranges.push({
+
+        if (!acc[seriesKey].ranges[`${startNumber}-${endNumber}`]) {
+            acc[seriesKey].ranges[`${startNumber}-${endNumber}`] = {
                 startNumber,
                 endNumber,
-                count: 1,
+                series: {},
                 price: 32.55
-            });
-        }
-        
-        return acc;
-    }, {});
-    const sortedSummary = Object.entries(selectedTicketSummary)
-    .reduce((acc, [key, value]) => {
-        const seriesKey = Array.from(value.series).sort().join(',');
-        if (!acc[seriesKey]) {
-            acc[seriesKey] = {
-                ticketname: value.ticketname,
-                drawDate: value.drawDate,
-                series: seriesKey,
-                ranges: [],
-                serialNumbers: new Set()
             };
         }
-        acc[seriesKey].ranges.push(...value.ranges);
-        acc[seriesKey].serialNumbers.add(value.serialNumber);
+
+        if (!acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial]) {
+            acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial] = 0;
+        }
+        acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial]++;
+
         return acc;
     }, {});
 
-const finalSortedSummary = Object.values(sortedSummary)
-    .sort((a, b) => a.series.localeCompare(b.series))
-    .map(group => ({
-        ...group,
-        ranges: group.ranges.sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
-        serialNumber: Array.from(group.serialNumbers).join(', '),
-        totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
-    }));
+    const sortedSummary = Object.entries(selectedTicketSummary).map(([key, value]) => {
+        const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
+            const seriesList = Object.keys(rangeData.series).sort();
+            const seriesGroups = seriesList.reduce((groups, serial) => {
+                if (groups.length === 0 || serial.charCodeAt(0) - groups[groups.length - 1].end.charCodeAt(0) > 1) {
+                    groups.push({ start: serial, end: serial, serials: [serial] });
+                } else {
+                    groups[groups.length - 1].end = serial;
+                    groups[groups.length - 1].serials.push(serial);
+                }
+                return groups;
+            }, []);
+
+            seriesGroups.forEach(group => {
+                const groupKey = `${group.start}-${group.end}`;
+                if (!acc[groupKey]) {
+                    acc[groupKey] = {
+                        series: group.serials.join(','),
+                        ranges: []
+                    };
+                }
+                acc[groupKey].ranges.push({
+                    startNumber: rangeData.startNumber,
+                    endNumber: rangeData.endNumber,
+                    count: group.serials.reduce((sum, serial) => sum + rangeData.series[serial], 0),
+                    price: rangeData.price
+                });
+            });
+
+            return acc;
+        }, {});
+
+        return {
+            ticketname: value.ticketname,
+            drawDate: value.drawDate,
+            groups: Object.values(rangeGroups)
+        };
+    });
+
+    const finalSortedSummary = sortedSummary
+        .sort((a, b) => a.groups[0].series.localeCompare(b.groups[0].series))
+        .map(item => ({
+            ...item,
+            groups: item.groups.map(group => ({
+                ...group,
+                ranges: group.ranges.sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
+                totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
+            }))
+        }));
+
+
     const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
 
     return (
