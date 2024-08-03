@@ -44,20 +44,24 @@ const SlipDocument = ({ ticketSummary, currentDateTime, name }) => {
                 </View>
                 <View style={styles.borderBottom} />
                 <View style={styles.section}>
-                    {ticketSummary.map((group, index) => (
+                    {ticketSummary.map((item, index) => (
                         <View key={index} style={styles.section}>
                             <Text style={styles.boldText}>
-                                {index + 1}. {group.ticketname} - Draw date: {group.drawDate}
+                                {index + 1}. {item.ticketname} - Draw date: {item.drawDate}
                             </Text>
-                            <Text>({group.series})</Text>
-                            {group.ranges.map((range, rangeIndex) => (
-                                <Text key={rangeIndex} style={styles.monospaceText}>
-                                    {`${range.startNumber.padStart(6, '0')}-${range.endNumber.padStart(6, '0')}    ${range.count.toString().padStart(3, ' ')}         ${range.price.toFixed(2)}    ${(range.count * range.price).toFixed(2).padStart(9, ' ')}`}
-                                </Text>
+                            {item.groups.map((group, groupIndex) => (
+                                <View key={groupIndex} style={styles.section}>
+                                    <Text>({group.series})</Text>
+                                    {group.ranges.map((range, rangeIndex) => (
+                                        <Text key={rangeIndex} style={styles.monospaceText}>
+                                            {`${range.startNumber.padStart(6, '0')}-${range.endNumber.padStart(6, '0')}    ${range.count.toString().padStart(3, ' ')}         ${range.price.toFixed(2)}    ${(range.count * range.price).toFixed(2).padStart(9, ' ')}`}
+                                        </Text>
+                                    ))}
+                                    {/* <Text style={[styles.monospaceText, styles.boldText]}>
+                                        {`${'Total:'.padStart(30, ' ')}    ${group.totalAmount.toFixed(2).padStart(9, ' ')}`}
+                                    </Text> */}
+                                </View>
                             ))}
-                            {/* <Text style={[styles.monospaceText, styles.boldText]}>
-                                {`${'Total:'.padStart(30, ' ')}    ${group.totalAmount.toFixed(2).padStart(9, ' ')}`}
-                            </Text> */}
                         </View>
                     ))}
                 </View>
