@@ -16,6 +16,8 @@
     "react-calendar": "^5.0.0",
     "react-datepicker": "^7.3.0",
     "react-dom": "^18.2.0",
+    "react-modal": "^3.16.1",
+    "react-to-print": "^2.15.1",
     "react-toastify": "^10.0.5"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTicketsFromDB } from '../helpers/indexdb';
-import usePDFSlip from './usePDFSlip';
+import SlipModal from './SlipModal';
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -13,6 +13,12 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [drawDates, setDrawDates] = useState([]);
     const [selectedDrawDate, setSelectedDrawDate] = useState('');
     const [expandedGroups, setExpandedGroups] = useState(new Set());
+    const [modalIsOpen, setModalIsOpen] = useState(false);
+    const [currentDateTime, setCurrentDateTime] = useState(new Date());
+    const [ticketprice]=useState([33.36,42.50])
+    const [selectedPrice, setSelectedPrice] = useState(Number(ticketprice[0]));
+    const [newprice,setNewprice]=useState(false)
+    const [pwtPrice,setpwtPrice]=useState(0)
 
     useEffect(() => {
         async function fetchTickets() {
@@ -163,13 +169,13 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-        const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
+        const [startNumber, endNumber, ticketname,drawDate] = ticket.identifier.split('-');
         const seriesKey = `${ticketname}-${drawDate}`;
-
+        const date= ticket.drawDate
         if (!acc[seriesKey]) {
             acc[seriesKey] = {
                 ticketname,
-                drawDate: new Date(drawDate).toLocaleDateString(),
+                drawDate: new Date(date).toLocaleDateString(),
                 ranges: {}
             };
         }
@@ -179,7 +185,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                 startNumber,
                 endNumber,
                 series: {},
-                price: 32.55
+                price:  Number(selectedPrice)
             };
         }
 
@@ -240,9 +246,25 @@ const BillingModal = ({ isOpen, onClose }) => {
                 totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
             }))
         }));
+            console.log(finalSortedSummary,'lg')
+     
+    // const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
+    const handlePriceChange = (e) => {
+        setSelectedPrice(Number(e.target.value));
+    };
 
+    const handleNewprice=()=>{
+        setNewprice(!newprice)
+    }
 
-    const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
+    const handlesetprice = (e) => {
+        let price = Number(e.target.value);
+        setSelectedPrice(price);
+    }
+
+    const handlepwtprice=(e)=>{
+        setpwtPrice(Number(e.target.value))
+    }
 
     return (
         isOpen && (
@@ -269,10 +291,57 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <div className="mb-4">
                             <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
                         </div>
-                        <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Close</button>
-                        <div className='mt-4'>
-                            {selectedTickets.size > 0 && buyerName.trim() !== '' && downloadLink}
+                        {/* <label className="block mb-2 font-bold text-gray-700">Select Ticket Price:</label> */}
+                        <div className="flex gap-2 mb-4">  
+                        {newprice ? (
+                            <input
+                            type='Number'
+                            placeholder='Enter Ticket Price'
+                            onChange={(e) => handlesetprice(e)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        ):(
+                            <select
+                            value={selectedPrice}
+                            onChange={handlePriceChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {ticketprice.map((price, index) => (
+                                <option key={index} value={price}>
+                                    ₹ {price.toFixed(2)}
+                                </option>
+                            ))}
+                        </select>
+                        )}
+                            <button  onClick={handleNewprice} className="px-4 py-2 text-black border font-bold rounded-md hover:bg-blue-200 hover:text-white">
+                                +
+                            </button>
                         </div>
+                        <div>
+                        <input
+                            type='Number'
+                            placeholder='Price winning ticket'
+                            onChange={(e) => handlepwtprice(e)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div className='flex flex-row gap-3'>
+                        <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Close</button>
+                        {selectedTickets.size > 0 && buyerName.trim() !== '' && 
+                        <button onClick={() => setModalIsOpen(true)} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">show bill slip</button> }
+                        </div>
+                        {/* <div className='mt-4'>
+                            {selectedTickets.size > 0 && buyerName.trim() !== '' && downloadLink}
+                        </div> */}
+                        <div>       
+              <SlipModal
+                isOpen={modalIsOpen}
+                onRequestClose={() => setModalIsOpen(false)}
+                ticketSummary={finalSortedSummary}
+                currentDateTime={currentDateTime}
+                name={buyerName}
+               />
+              </div>
                     </div>
                     <div className="w-1/2 p-4 border-l border-gray-200">
                         <h2 className="text-lg font-bold mb-4">Search Results</h2>

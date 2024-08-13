@@ -5,9 +5,10 @@ import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import PasswordScreen from './PasswordScreen';
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
+    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier,price) {
         this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
@@ -16,10 +17,11 @@ class Lottery {
         this.state = state;
         this.drawDate = drawDate;
         this.identifier = identifier;
+        this.price=price
     }
 }
 
-const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber, drawDate) => {
+const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber, drawDate,price) => {
     const ticket_arr = [];
     let temp_first_lott_ser = firstSerial;
     let temp_first_lottery_num = firstNumber;
@@ -29,7 +31,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier,price));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -42,6 +44,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
 };
 
 const LotteryTicketGenerator = () => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [firstSerial, setFirstSerial] = useState('');
     const [lastSerial, setLastSerial] = useState('');
     const [firstNumber, setFirstNumber] = useState('');
@@ -102,7 +105,7 @@ const LotteryTicketGenerator = () => {
     const handleGenerate = async () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
-        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate);
+        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate,selectedPrice);
         const ticketsFromDB = await getAllTicketsFromDB();
 
         const filteredNewTickets = newTickets.filter(newTicket => {
@@ -115,23 +118,8 @@ const LotteryTicketGenerator = () => {
             await saveTicketsToDB(filteredNewTickets);
             toast.success('New tickets have been added successfully.');
         } else {
-            toast.error('No new tickets to add or some tickets are already existing in the specified range.');
+            toast.error('No new tickets to add or some tickets are already existing in the specified range');
         }
-    };
-
-    const handleSelectSerial = (serial) => {
-        const updatedTickets = lotteryTickets.map(ticket => {
-            if (ticket.serial === serial) {
-                ticket.state = !ticket.state;
-            }
-            return ticket;
-        });
-        setLotteryTickets(updatedTickets);
-        setSelectedSerials((prevSelectedSerials) =>
-            prevSelectedSerials.includes(serial)
-                ? prevSelectedSerials.filter((s) => s !== serial)
-                : [...prevSelectedSerials, serial]
-        );
     };
 
     const handleUpdateTicket = async (updatedTicket) => {
@@ -210,9 +198,6 @@ const LotteryTicketGenerator = () => {
     );
     const downloadLink = usePDFSlip(selectedTicketSummary);
 
-    // const toggleDropdown = (prefix) => {
-    //     setShowDropdown(prevState => ({ ...prevState, [prefix]: !prevState[prefix] }));
-    // };
 
     return (
         <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-8'>
@@ -268,14 +253,6 @@ const LotteryTicketGenerator = () => {
                     <tbody>
                         {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
                             <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
-                                {/* <td className="px-4 py-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedSerials.includes(key)}
-                                        onChange={() => handleSelectSerial(key)}
-                                        className="form-checkbox h-5 w-5 text-blue-600"
-                                    />
-                                </td> */}
                                 <td className="px-4 py-2">{ticketname}</td>
                                 <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
                                     {start}
