@@ -169,7 +169,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-        const [startNumber, endNumber, ticketname,drawDate] = ticket.identifier.split('-');
+        const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
         const seriesKey = `${ticketname}-${drawDate}`;
         const date= ticket.drawDate
         if (!acc[seriesKey]) {
@@ -246,7 +246,6 @@ const BillingModal = ({ isOpen, onClose }) => {
                 totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
             }))
         }));
-            console.log(finalSortedSummary,'lg')
      
     // const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
     const handlePriceChange = (e) => {
