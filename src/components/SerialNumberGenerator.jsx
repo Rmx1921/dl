@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import usePDFSlip from './usePDFSlip';
 import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../helpers/indexdb';
 import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
@@ -196,7 +195,6 @@ const LotteryTicketGenerator = () => {
     const selectedTicketSummary = Object.fromEntries(
         Object.entries(ticketSummary).filter(([prefix]) => selectedSerials.includes(prefix))
     );
-    const downloadLink = usePDFSlip(selectedTicketSummary);
 
 
     return (
