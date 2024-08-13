@@ -114,6 +114,17 @@ const styles = {
 const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, ref) => {
     const contentRef = useRef();
 
+    const formattedDate = (date) => {
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+        const period = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12 || 12;
+        minutes = minutes < 10 ? `0${minutes}` : minutes;
+        const out = `${hours}.${minutes} ${period}`;
+        return out;
+    }
+    let out=formattedDate(currentDateTime)
+
     useImperativeHandle(ref, () => ({
         print: () => contentRef.current,
     }));
@@ -142,7 +153,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, r
             <div style={styles.infoSection}>
                 <div style={styles.infoColumn}>
                     <p><span style={styles.boldText}>Date:</span> {currentDateTime.toLocaleDateString()}</p>
-                    <p><span style={styles.boldText}>Time:</span> {currentDateTime.toLocaleTimeString()}</p>
+                    <p><span style={styles.boldText}></span> {out}</p>
                 </div>
                 <div style={styles.infoColumn}>
                     <p><span style={styles.boldText}>Name:</span> {name}</p>
