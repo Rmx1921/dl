@@ -35,11 +35,11 @@ const styles = {
         fontSize: '14px',
         marginBottom: '20px',
     },
-    infoSection: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginBottom: '20px',
-    },
+    // infoSection: {
+    //     display: 'flex',
+    //     justifyContent: 'space-between',
+    //     marginBottom: '20px',
+    // },
     infoColumn: {
         flex: '1',
     },
@@ -150,12 +150,12 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, r
             <div style={styles.header}>Devan Lottery Agency</div>
             <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
             
-            <div style={styles.infoSection}>
+            <div className='flex justify-between'>
                 <div style={styles.infoColumn}>
                     <p><span style={styles.boldText}>Date:</span> {currentDateTime.toLocaleDateString()}</p>
                     <p><span style={styles.boldText}></span> {out}</p>
                 </div>
-                <div style={styles.infoColumn}>
+                <div className='item-end'>
                     <p><span style={styles.boldText}>Name:</span> {name}</p>
                     <p><span style={styles.boldText}>Mob:</span> 8848780005</p>
                 </div>
@@ -213,7 +213,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, r
                         <td style={styles.tableCell}>Total</td>
                         <td style={styles.tableCell}>{calculateTotalQuantity(ticketSummary[0])}</td>
                         <td style={styles.tableCell}></td>
-                        <td style={styles.tableCell}>{calculateTotal(ticketSummary[0]).toFixed(2)}</td>
+                        <td style={styles.tableCell}>₹ {calculateTotal(ticketSummary[0]).toFixed(2)}</td>
                     </tr>
                     <tr>
                         <td colSpan="5" style={{...styles.tableCell, borderTop: '1px solid black'}}></td>
