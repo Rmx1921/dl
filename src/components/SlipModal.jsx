@@ -17,7 +17,6 @@ const modalStyles = {
         width: '80%',
         height: '80%',
         padding: '20px',
-        paddingTop: '60px',
         overflow: 'hidden',
     },
 };
@@ -80,7 +79,7 @@ const styles = {
     },
     buttonContainer: {
         position: 'absolute',
-        top: '0',
+        bottom: '0',
         left: '0',
         right: '0',
         display: 'flex',
@@ -88,6 +87,7 @@ const styles = {
         backgroundColor: '#fff',
         zIndex: '10',
         padding: '10px 20px',
+        borderTop: '1px solid #ccc',
     },
     button: {
         padding: '10px 20px',
@@ -99,13 +99,13 @@ const styles = {
         },
     },
     contentContainer: {
-        height: '100%',
+        height: 'calc(100% - 60px)',
         overflowY: 'auto',
-        paddingTop: '50px',
+        paddingBottom: '60px',
     },
 };
 
-const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name,pwt}, ref) => {
+const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt }, ref) => {
     const contentRef = useRef();
 
     const formattedDate = (date) => {
@@ -117,7 +117,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name,pwt}
         const out = `${hours}.${minutes} ${period}`;
         return out;
     }
-    let out=formattedDate(currentDateTime)
+    let out = formattedDate(currentDateTime)
 
     useImperativeHandle(ref, () => ({
         print: () => contentRef.current,
@@ -216,13 +216,13 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name,pwt}
                 </tbody>
             </table>
             <div className='item-start'>
-                    <p><span>PWT:</span> ₹ {pwt}</p>
-                </div>
+                <p><span>PWT:</span> ₹ {pwt}</p>
+            </div>
         </div>
     );
 });
 
-const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name,pwt}) => {
+const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt }) => {
     const printableRef = useRef();
 
     const handlePrint = useReactToPrint({
@@ -241,13 +241,15 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
 
     return (
         <Modal isOpen={isOpen} onRequestClose={onRequestClose} style={modalStyles}>
-            <PrintableContent
-                ref={printableRef}
-                ticketSummary={ticketSummary}
-                currentDateTime={currentDateTime}
-                name={name}
-                pwt={pwt}
-            />
+            <div style={styles.contentContainer}>
+                <PrintableContent
+                    ref={printableRef}
+                    ticketSummary={ticketSummary}
+                    currentDateTime={currentDateTime}
+                    name={name}
+                    pwt={pwt}
+                />
+            </div>
             <div style={{...styles.buttonContainer, ...styles.printHide}}>
                 <button onClick={handlePrint} style={styles.button}>Print</button>
                 <button onClick={onRequestClose} style={styles.button}>Edit</button>
