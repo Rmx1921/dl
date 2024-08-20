@@ -339,6 +339,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                 ticketSummary={finalSortedSummary}
                 currentDateTime={currentDateTime}
                 name={buyerName}
+                pwt={pwtPrice}
                />
               </div>
                     </div>

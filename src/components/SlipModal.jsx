@@ -3,17 +3,22 @@ import Modal from 'react-modal';
 import { useReactToPrint } from 'react-to-print';
 
 const modalStyles = {
+    overlay: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     content: {
-        top: '50%',
-        left: '50%',
+        position: 'relative',
+        top: 'auto',
+        left: 'auto',
         right: 'auto',
         bottom: 'auto',
-        marginRight: '-50%',
-        transform: 'translate(-50%, -50%)',
         width: '80%',
         height: '80%',
         padding: '20px',
-        overflow: 'auto',
+        paddingTop: '60px',
+        overflow: 'hidden',
     },
 };
 
@@ -35,11 +40,6 @@ const styles = {
         fontSize: '14px',
         marginBottom: '20px',
     },
-    // infoSection: {
-    //     display: 'flex',
-    //     justifyContent: 'space-between',
-    //     marginBottom: '20px',
-    // },
     infoColumn: {
         flex: '1',
     },
@@ -79,9 +79,15 @@ const styles = {
         fontSize: '12px',
     },
     buttonContainer: {
+        position: 'absolute',
+        top: '0',
+        left: '0',
+        right: '0',
         display: 'flex',
         justifyContent: 'space-between',
-        marginBottom: '10px',
+        backgroundColor: '#fff',
+        zIndex: '10',
+        padding: '10px 20px',
     },
     button: {
         padding: '10px 20px',
@@ -92,26 +98,14 @@ const styles = {
             display: 'none',
         },
     },
-    rangeTable: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        marginTop: '20px',
-    },
-    tableHeader: {
-        borderBottom: '1px solid black',
-        textAlign: 'left',
-        padding: '5px',
-        fontWeight: 'bold',
-    },
-    tableCell: {
-        padding: '5px',
-        fontFamily: 'Courier, monospace',
-        fontSize: '12px',
-        whiteSpace: 'nowrap',
+    contentContainer: {
+        height: '100%',
+        overflowY: 'auto',
+        paddingTop: '50px',
     },
 };
 
-const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, ref) => {
+const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name,pwt}, ref) => {
     const contentRef = useRef();
 
     const formattedDate = (date) => {
@@ -130,11 +124,12 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, r
     }));
 
     const calculateTotal = (item) => {
-        return item.groups.reduce((acc, group) => {
+        const total = item.groups.reduce((acc, group) => {
             return acc + group.ranges.reduce((groupAcc, range) => {
                 return groupAcc + range.count * range.price;
             }, 0);
         }, 0);
+        return pwt ? total - pwt : total;
     };
 
     const calculateTotalQuantity = (item) => {
@@ -220,11 +215,14 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name }, r
                     </tr>
                 </tbody>
             </table>
+            <div className='item-start'>
+                    <p><span>PWT:</span> ₹ {pwt}</p>
+                </div>
         </div>
     );
 });
 
-const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name }) => {
+const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name,pwt}) => {
     const printableRef = useRef();
 
     const handlePrint = useReactToPrint({
@@ -243,16 +241,17 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
 
     return (
         <Modal isOpen={isOpen} onRequestClose={onRequestClose} style={modalStyles}>
-            <div style={{...styles.buttonContainer, ...styles.printHide}}>
-                <button onClick={handlePrint} style={styles.button}>Print</button>
-                <button onClick={onRequestClose} style={styles.button}>Edit</button>
-            </div>
             <PrintableContent
                 ref={printableRef}
                 ticketSummary={ticketSummary}
                 currentDateTime={currentDateTime}
                 name={name}
+                pwt={pwt}
             />
+            <div style={{...styles.buttonContainer, ...styles.printHide}}>
+                <button onClick={handlePrint} style={styles.button}>Print</button>
+                <button onClick={onRequestClose} style={styles.button}>Edit</button>
+            </div>
         </Modal>
     );
 };
