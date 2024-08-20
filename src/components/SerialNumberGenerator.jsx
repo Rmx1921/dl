@@ -7,7 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import PasswordScreen from './PasswordScreen';
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier,price) {
+    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
         this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
@@ -16,11 +16,10 @@ class Lottery {
         this.state = state;
         this.drawDate = drawDate;
         this.identifier = identifier;
-        this.price=price
     }
 }
 
-const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber, drawDate,price) => {
+const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber, ticketname, serialNumber, drawDate) => {
     const ticket_arr = [];
     let temp_first_lott_ser = firstSerial;
     let temp_first_lottery_num = firstNumber;
@@ -30,7 +29,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier,price));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -104,7 +103,7 @@ const LotteryTicketGenerator = () => {
     const handleGenerate = async () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
-        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate,selectedPrice);
+        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate);
         const ticketsFromDB = await getAllTicketsFromDB();
 
         const filteredNewTickets = newTickets.filter(newTicket => {
@@ -115,7 +114,7 @@ const LotteryTicketGenerator = () => {
             const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
             setLotteryTickets(updatedTickets);
             await saveTicketsToDB(filteredNewTickets);
-            toast.success('New tickets have been added successfully.');
+            toast.success('Tickets added');
         } else {
             toast.error('No new tickets to add or some tickets are already existing in the specified range');
         }
