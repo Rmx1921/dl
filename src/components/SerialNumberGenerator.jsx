@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../helpers/indexdb';
+import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../components/helpers/indexdb'
 import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
@@ -202,10 +202,10 @@ const LotteryTicketGenerator = () => {
             <div className='p-6 mb-8'>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
                     <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(0)} ref={(el) => inputRefs.current[0] = el} />
-                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(1)} ref={(el) => inputRefs.current[1] = el}/>
+                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(1)} ref={(el) => inputRefs.current[1] = el} />
                     <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} onEnterPress={() => handleEnterPress(2)} ref={(el) => inputRefs.current[2] = el} />
-                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} onEnterPress={() => handleEnterPress(3)} ref={(el) => inputRefs.current[3] = el}/>
-                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} onEnterPress={() => handleEnterPress(4)} ref={(el) => inputRefs.current[4] = el}/>
+                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} onEnterPress={() => handleEnterPress(3)} ref={(el) => inputRefs.current[3] = el} />
+                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} onEnterPress={() => handleEnterPress(4)} ref={(el) => inputRefs.current[4] = el} />
                     <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} onEnterPress={() => handleEnterPress(5)} ref={(el) => inputRefs.current[5] = el} />
                     <div className="mb-4">
                         <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>

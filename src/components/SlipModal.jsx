@@ -1,6 +1,6 @@
 import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import Modal from 'react-modal';
-import { useReactToPrint } from 'react-to-print';
+import { ipcRenderer } from 'electron';
 
 const modalStyles = {
     overlay: {
@@ -22,20 +22,20 @@ const modalStyles = {
 };
 
 const styles = {
-    page: { 
+    page: {
         fontFamily: 'Helvetica, Arial, sans-serif',
         padding: '20px',
         maxWidth: '800px',
         margin: '0 auto',
     },
-    header: { 
-        marginBottom: '10px', 
-        textAlign: 'center', 
+    header: {
+        marginBottom: '10px',
+        textAlign: 'center',
         fontSize: '24px',
-        fontWeight: 'bold', 
+        fontWeight: 'bold',
     },
-    subheader: { 
-        textAlign: 'center', 
+    subheader: {
+        textAlign: 'center',
         fontSize: '14px',
         marginBottom: '20px',
     },
@@ -43,8 +43,8 @@ const styles = {
         flex: '1',
     },
     boldText: { fontWeight: 'bold' },
-    borderBottom: { 
-        borderBottom: '1px dashed black', 
+    borderBottom: {
+        borderBottom: '1px dashed black',
         margin: '10px 0',
     },
     ticketSection: {
@@ -144,7 +144,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
         <div ref={contentRef} style={styles.page}>
             <div style={styles.header}>Devan Lottery Agency</div>
             <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
-            
+
             <div className='flex justify-between'>
                 <div style={styles.infoColumn}>
                     <p><span style={styles.boldText}>Date:</span> {currentDateTime.toLocaleDateString()}</p>
@@ -155,9 +155,9 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                     <p><span style={styles.boldText}>Mob:</span> 8848780005</p>
                 </div>
             </div>
-            
+
             <div style={styles.borderBottom} />
-            
+
             <table style={styles.rangeTable}>
                 <thead>
                     <tr>
@@ -201,7 +201,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                         </React.Fragment>
                     ))}
                     <tr>
-                        <td colSpan="5" style={{...styles.tableCell, borderTop: '1px solid black'}}></td>
+                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
                     </tr>
                     <tr>
                         <td style={styles.tableCell}></td>
@@ -211,7 +211,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                         <td style={styles.tableCell}>₹ {calculateTotal(ticketSummary[0]).toFixed(2)}</td>
                     </tr>
                     <tr>
-                        <td colSpan="5" style={{...styles.tableCell, borderTop: '1px solid black'}}></td>
+                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
                     </tr>
                 </tbody>
             </table>
@@ -225,9 +225,9 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
 const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt }) => {
     const printableRef = useRef();
 
-    const handlePrint = useReactToPrint({
-        content: () => printableRef.current.print(),
-    });
+    const handlePrint = () => {
+        ipcRenderer.send('print-to-pdf');
+    };
 
     if (!ticketSummary || ticketSummary.length === 0) {
         return (
@@ -250,7 +250,7 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
                     pwt={pwt}
                 />
             </div>
-            <div style={{...styles.buttonContainer, ...styles.printHide}}>
+            <div style={{ ...styles.buttonContainer, ...styles.printHide }}>
                 <button onClick={handlePrint} style={styles.button}>Print</button>
                 <button onClick={onRequestClose} style={styles.button}>Edit</button>
             </div>
