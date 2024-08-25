@@ -1,6 +1,5 @@
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import Modal from 'react-modal';
-import { ipcRenderer } from 'electron';
 
 const modalStyles = {
     overlay: {
@@ -225,9 +224,34 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
 const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt }) => {
     const printableRef = useRef();
 
-    const handlePrint = () => {
-        ipcRenderer.send('print-to-pdf');
+    const handlePrint = async () => {
+        console.log('handlePrint called');
+        try {
+            console.log('Calling window.electronAPI.printToPDF');
+            const result = await window.electronAPI.printToPDF();
+            console.log('printToPDF result:', result);
+            if (result.success) {
+                console.log(result.message);
+            } else {
+                console.error('Printing failed:', result.error);
+            }
+        } catch (error) {
+            console.error('Error in handlePrint:', error);
+        }
     };
+
+    useEffect(() => {
+        const printReplyHandler = (event, result) => {
+            if (result.success) {
+                console.log('Print successful:', result.message);
+            } else {
+                console.error('Print failed:', result.error);
+            }
+        };
+
+        const removeListener = window.electronAPI.onPrintReply(printReplyHandler);
+        return () => removeListener();
+    }, []);
 
     if (!ticketSummary || ticketSummary.length === 0) {
         return (
