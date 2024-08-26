@@ -124,6 +124,18 @@ function createWindow() {
         });
     });
 
+    ipcMain.handle('print-to-pdf', async (event, options) => {
+        try {
+            const win = BrowserWindow.getFocusedWindow();
+            const pdfPath = path.join(app.getPath('downloads'), options.fileName || 'print.pdf');
+            const data = await win.webContents.printToPDF({});
+            await fs.writeFile(pdfPath, data);
+            return { success: true, message: `Printed to: ${pdfPath}` };
+        } catch (error) {
+            console.error('Failed to print:', error);
+            return { success: false, error: error.message };
+        }
+    });
     console.log('Print IPC handler registered');
 }
 
