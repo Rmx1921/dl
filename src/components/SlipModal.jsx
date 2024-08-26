@@ -1,4 +1,4 @@
-import React, { useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useEffect, useState } from 'react';
 import Modal from 'react-modal';
 
 const modalStyles = {
@@ -104,8 +104,12 @@ const styles = {
     },
 };
 
-const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt }, ref) => {
+const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt, billno }, ref) => {
     const contentRef = useRef();
+
+    useImperativeHandle(ref, () => ({
+        print: () => contentRef.current,
+    }));
 
     const formattedDate = (date) => {
         let hours = date.getHours();
@@ -117,10 +121,6 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
         return out;
     }
     let out = formattedDate(currentDateTime)
-
-    useImperativeHandle(ref, () => ({
-        print: () => contentRef.current,
-    }));
 
     const calculateTotal = (item) => {
         const total = item.groups.reduce((acc, group) => {
@@ -151,7 +151,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                 </div>
                 <div className='item-end'>
                     <p><span style={styles.boldText}>Name:</span> {name}</p>
-                    <p><span style={styles.boldText}>Mob:</span> 8848780005</p>
+                    <p><span style={styles.boldText}>Bill no : </span>{billno}</p>
                 </div>
             </div>
 
@@ -221,22 +221,34 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
     );
 });
 
-const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt }) => {
+const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt, billno, onPrintSuccess }) => {
     const printableRef = useRef();
+    const [currentBillNo, setCurrentBillNo] = useState(billno);
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    useEffect(() => {
+        setCurrentBillNo(billno);
+    }, [billno]);
 
     const handlePrint = async () => {
         console.log('handlePrint called');
+        setIsPrinting(true);
         try {
             console.log('Calling window.electronAPI.printToPDF');
-            const result = await window.electronAPI.printToPDF();
+            const result = await window.electronAPI.printToPDF({
+                fileName: `${currentBillNo}.pdf`
+            });
             console.log('printToPDF result:', result);
             if (result.success) {
                 console.log(result.message);
+                await onPrintSuccess();
             } else {
                 console.error('Printing failed:', result.error);
             }
         } catch (error) {
             console.error('Error in handlePrint:', error);
+        } finally {
+            setIsPrinting(false);
         }
     };
 
@@ -272,6 +284,7 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
                     currentDateTime={currentDateTime}
                     name={name}
                     pwt={pwt}
+                    billno={isPrinting ? currentBillNo : billno}
                 />
             </div>
             <div style={{ ...styles.buttonContainer, ...styles.printHide }}>
