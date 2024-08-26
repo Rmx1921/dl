@@ -136,6 +136,13 @@ function createWindow() {
             return { success: false, error: error.message };
         }
     });
+
+    if (global.gc) {
+        global.gc();
+    } else {
+        console.warn('Garbage collection is not exposed. Use --expose-gc when running the app.');
+    }
+
     console.log('Print IPC handler registered');
 }
 
@@ -148,3 +155,19 @@ app.on('activate', function () {
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });
+
+app.on('ready', () => {
+    process.on('uncaughtException', (error) => {
+        if (error.message.includes("Request Autofill.setAddresses failed")) {
+            return;
+        }
+        console.error('Uncaught Exception:', error);
+    });
+    if (app.isPackaged) {
+        mainWindow.webContents.on('devtools-opened', () => {
+            mainWindow.webContents.closeDevTools();
+        });
+    }
+});
+
+app.allowRendererProcessReuse = true;

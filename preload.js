@@ -8,7 +8,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('print-reply', callback);
     }
     return () => {};
+  },
+
+  getData: () => ipcRenderer.invoke('get-data'),
+  onDataUpdate: (callback) => {
+    const channel = 'data-update';
+    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    return () => ipcRenderer.removeListener(channel, callback);
   }
 });
-
-console.log('Preload script executed, electronAPI exposed');
+window.addEventListener('DOMContentLoaded', () => {
+  // heavy initialization area
+});

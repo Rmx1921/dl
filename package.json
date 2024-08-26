@@ -12,7 +12,8 @@
     "electron-pack": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
     "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
     "electron:build": "npm run build && electron-builder",
-    "electron:preview": "npm run build && electron ."
+    "electron:preview": "npm run build && electron .",
+    "start": "electron . --expose-gc"
   },
   "dependencies": {
     "electron-is-dev": "^3.0.1",
