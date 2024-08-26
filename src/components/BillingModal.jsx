@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTicketsFromDB } from '../components/helpers/indexdb';
+import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import SlipModal from './SlipModal';
 
 const BillingModal = ({ isOpen, onClose }) => {
@@ -19,6 +20,16 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [selectedPrice, setSelectedPrice] = useState(Number(ticketprice[0]));
     const [newprice, setNewprice] = useState(false)
     const [pwtPrice, setpwtPrice] = useState(0)
+    const [lastbillno,setBillno]=useState(0)
+    const [tempBillNo, setTempBillNo] = useState(null);
+
+    useEffect(()=>{
+          async function fetchbillno(){
+            const billno = await getLastBillNumber()
+            setBillno(billno)
+          }
+        fetchbillno()
+    },[])
 
     useEffect(() => {
         async function fetchTickets() {
@@ -247,7 +258,6 @@ const BillingModal = ({ isOpen, onClose }) => {
             }))
         }));
 
-    // const downloadLink = usePDFSlip(finalSortedSummary, buyerName);
     const handlePriceChange = (e) => {
         setSelectedPrice(Number(e.target.value));
     };
@@ -264,6 +274,20 @@ const BillingModal = ({ isOpen, onClose }) => {
     const handlepwtprice = (e) => {
         setpwtPrice(Number(e.target.value))
     }
+
+    const handleOpenmodal = () => {
+        const newBillNo = lastbillno == null ? 1 : lastbillno + 1;
+        setTempBillNo(newBillNo);
+        setModalIsOpen(true);
+    };
+
+    const handlePrintSuccess = async () => {
+        if (tempBillNo !== null) {
+            await saveBillNumber(tempBillNo);
+            setBillno(tempBillNo);
+            setTempBillNo(null);
+        }
+    };
 
     return (
         isOpen && (
@@ -290,7 +314,6 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <div className="mb-4">
                             <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
                         </div>
-                        {/* <label className="block mb-2 font-bold text-gray-700">Select Ticket Price:</label> */}
                         <div className="flex gap-2 mb-4">
                             {newprice ? (
                                 <input
@@ -327,11 +350,8 @@ const BillingModal = ({ isOpen, onClose }) => {
                         <div className='flex flex-row gap-3'>
                             <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Close</button>
                             {selectedTickets.size > 0 && buyerName.trim() !== '' &&
-                                <button onClick={() => setModalIsOpen(true)} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">show bill slip</button>}
+                                <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">show bill slip</button>}
                         </div>
-                        {/* <div className='mt-4'>
-                            {selectedTickets.size > 0 && buyerName.trim() !== '' && downloadLink}
-                        </div> */}
                         <div>
                             <SlipModal
                                 isOpen={modalIsOpen}
@@ -340,6 +360,8 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 currentDateTime={currentDateTime}
                                 name={buyerName}
                                 pwt={pwtPrice}
+                                billno={tempBillNo || lastbillno}
+                                onPrintSuccess={handlePrintSuccess}
                             />
                         </div>
                     </div>
