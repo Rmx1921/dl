@@ -234,16 +234,19 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
         console.log('handlePrint called');
         setIsPrinting(true);
         try {
-            console.log('Calling window.electronAPI.printToPDF');
-            const result = await window.electronAPI.printToPDF({
+            const printResult = await window.electronAPI.print();
+            console.log('print result:', printResult);
+
+            const pdfResult = await window.electronAPI.printToPDF({
                 fileName: `${currentBillNo}.pdf`
             });
-            console.log('printToPDF result:', result);
-            if (result.success) {
-                console.log(result.message);
+            console.log('printToPDF result:', pdfResult);
+
+            if (printResult.success && pdfResult.success) {
+                console.log('Print initiated and PDF generated successfully');
                 await onPrintSuccess();
             } else {
-                console.error('Printing failed:', result.error);
+                console.error('Printing or PDF generation failed:', printResult.error || pdfResult.error);
             }
         } catch (error) {
             console.error('Error in handlePrint:', error);

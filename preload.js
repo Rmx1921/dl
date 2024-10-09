@@ -2,14 +2,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   printToPDF: (options) => ipcRenderer.invoke('print-to-pdf', options),
+  print: () => ipcRenderer.invoke('print'),
   onPrintReply: (callback) => {
     if (typeof callback === 'function') {
       ipcRenderer.on('print-reply', callback);
       return () => ipcRenderer.removeListener('print-reply', callback);
     }
-    return () => {};
+    return () => { };
   },
-
   getData: () => ipcRenderer.invoke('get-data'),
   onDataUpdate: (callback) => {
     const channel = 'data-update';

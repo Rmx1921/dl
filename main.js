@@ -41,9 +41,10 @@ function createWindow() {
     ipcMain.handle('print', async (event) => {
         console.log('Print IPC handler called in main process');
         const win = BrowserWindow.fromWebContents(event.sender);
-        try {
+
+        return new Promise((resolve) => {
             const printOptions = {
-                silent: false,
+                silent: true,
                 printBackground: true,
                 color: true,
                 margin: {
@@ -61,18 +62,14 @@ function createWindow() {
                 if (success) {
                     console.log('Print Initiated');
                     event.sender.send('print-reply', { success: true, message: 'Print Initiated' });
+                    resolve({ success: true, message: 'Print Initiated' });
                 } else {
                     console.error('Print Failed:', failureReason);
                     event.sender.send('print-reply', { success: false, error: failureReason });
+                    resolve({ success: false, error: failureReason });
                 }
             });
-
-            return { success: true, message: 'Print dialog opened' };
-        } catch (error) {
-            console.error('Printing failed:', error);
-            console.error('Error stack:', error.stack);
-            return { success: false, error: error.message };
-        }
+        });
     });
 
     ipcMain.handle('printToPDF', async (event) => {

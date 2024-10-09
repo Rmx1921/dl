@@ -72,18 +72,41 @@ const LotteryTicketGenerator = () => {
         setIsBillingModalOpen(false);
     };
 
+    // useEffect(() => {
+    //     async function fetchTickets() {
+    //         const ticketsFromDB = await getAllTicketsFromDB();
+    //         const parsedTickets = ticketsFromDB.map(ticket => ({
+    //             ...ticket,
+    //             drawDate: new Date(ticket.drawDate)
+    //         }));
+    //         setLotteryTickets(parsedTickets);
+    //     }
+
+    //     fetchTickets();
+    // }, []);
     useEffect(() => {
         async function fetchTickets() {
-            const ticketsFromDB = await getAllTicketsFromDB();
-            const parsedTickets = ticketsFromDB.map(ticket => ({
-                ...ticket,
-                drawDate: new Date(ticket.drawDate)
-            }));
-            setLotteryTickets(parsedTickets);
+            try {
+                const ticketsFromDB = await getAllTicketsFromDB();
+                if (ticketsFromDB.length === 0) {
+                    console.log('No tickets found in the database.');
+                    setLotteryTickets([]);
+                    return;
+                }
+                const parsedTickets = ticketsFromDB.map(ticket => ({
+                    ...ticket,
+                    drawDate: new Date(ticket.drawDate)
+                }));
+                setLotteryTickets(parsedTickets);
+            } catch (error) {
+                console.error('Error fetching tickets:', error);
+                setLotteryTickets([]);
+            }
         }
 
         fetchTickets();
     }, []);
+
 
     useEffect(() => {
         const handleClickOutside = (event) => {
