@@ -1,12 +1,22 @@
-const { defineConfig } = require('vite');
-const react = require('@vitejs/plugin-react');
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-module.exports = defineConfig({
-  plugins: [react()],
-  base: process.env.ELECTRON == "true" ? './' : '/',
-  build: {
-    outDir: 'dist',
-    assetsDir: '.',
-    emptyOutDir: true,
-  },
-});
+export default defineConfig(({ command }) => {
+  const config = {
+    plugins: [react()],
+    base: './',
+    build: {
+      outDir: 'dist',
+      assetsDir: '.',
+      emptyOutDir: true,
+    },
+  }
+
+  if (command !== 'serve') {
+    config.define = {
+      'process.env.NODE_ENV': '"production"'
+    }
+  }
+
+  return config
+})

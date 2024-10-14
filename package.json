@@ -8,23 +8,25 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron-dev": "electron .",
-    "electron-pack": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite",
-    "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
-    "electron:build": "npm run build && electron-builder",
-    "electron:preview": "npm run build && electron .",
-    "start": "electron . --expose-gc"
+    "electron:dev": "cross-env NODE_ENV=development concurrently \"npm run dev\" \"electron .\"",
+  "electron:build": "cross-env NODE_ENV=production npm run build && electron-builder",
+    "electron:preview": "npm run build && electron ."
   },
   "dependencies": {
     "electron-is-dev": "^3.0.1",
+    "electron-log": "^5.2.0",
+    "grunt": "^0.4.5",
     "idb": "^8.0.0",
+    "node-gyp": "^10.2.0",
+    "pdf-to-printer": "^5.6.0",
     "react": "^18.3.1",
     "react-calendar": "^5.0.0",
     "react-datepicker": "^7.3.0",
     "react-dom": "^18.3.1",
     "react-modal": "^3.16.1",
     "react-to-print": "^2.15.1",
-    "react-toastify": "^10.0.5"
+    "react-toastify": "^10.0.5",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
@@ -35,6 +37,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^32.0.1",
+    "electron-builder": "^25.1.8",
     "electron-packager": "^17.1.2",
     "eslint": "^9.9.0",
     "eslint-plugin-react": "^7.35.0",
@@ -43,6 +46,33 @@
     "globals": "^15.9.0",
     "tailwindcss": "^3.4.10",
     "vite": "^5.4.1"
+  },
+  "build": {
+    "appId": "com.yourcompany.yourapp",
+    "productName": "DL",
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js"
+    ],
+    "directories": {
+      "output": "release/${version}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
   },
   "homepage": "./"
 }
