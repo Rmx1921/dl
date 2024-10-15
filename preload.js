@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => { };
   },
   getData: () => ipcRenderer.invoke('get-data'),
+  onOpenBillsPage: (callback) => ipcRenderer.on('open-bills-page', callback),
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   onDataUpdate: (callback) => {
     const channel = 'data-update';
     ipcRenderer.on(channel, (event, ...args) => callback(...args));
@@ -18,5 +20,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 window.addEventListener('DOMContentLoaded', () => {
-  // heavy initialization area
+ 
 });

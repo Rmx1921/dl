@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain,Menu} = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const url = require('url');
@@ -44,12 +44,34 @@ function loadProductionBuild(mainWindow) {
     });
 }
 
+let mainWindow;
+
+function waitForViteServer(mainWindow, retries = 30, delay = 1000) {
+    return new Promise((resolve, reject) => {
+        const tryLoad = (retriesLeft) => {
+            mainWindow.loadURL('http://localhost:5173').then(() => {
+                log.info('Successfully connected to Vite dev server');
+                resolve();
+            }).catch(err => {
+                if (retriesLeft > 0) {
+                    log.info(`Failed to connect to Vite dev server. Retrying in ${delay}ms... (${retriesLeft} attempts left)`);
+                    setTimeout(() => tryLoad(retriesLeft - 1), delay);
+                } else {
+                    log.error('Failed to connect to Vite dev server after multiple attempts');
+                    reject(err);
+                }
+            });
+        };
+        tryLoad(retries);
+    });
+}
+
 function createWindow() {
     log.info('Creating main window...');
     const preloadPath = path.join(__dirname, 'preload.js');
     log.info(`Preload path: ${preloadPath}`);
 
-    const mainWindow = new BrowserWindow({
+      mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
@@ -69,12 +91,16 @@ function createWindow() {
     log.info(`Start URL: ${startUrl}`);
 
     if (isDev) {
-        log.info('Loading development URL...');
-        mainWindow.loadURL('http://localhost:5173').catch(err => {
-            log.error('Failed to load dev server:', err);
-            loadProductionBuild(mainWindow);
-        });
-        mainWindow.webContents.openDevTools();
+        log.info('Attempting to connect to development server...');
+        waitForViteServer(mainWindow)
+            .then(() => {
+                log.info('Development server connected, opening DevTools');
+                mainWindow.webContents.openDevTools();
+            })
+            .catch(err => {
+                log.error('Failed to load dev server:', err);
+                loadProductionBuild(mainWindow);
+            });
     } else {
         loadProductionBuild(mainWindow);
     }
@@ -141,6 +167,33 @@ function createWindow() {
         }
     });
 }
+
+const customMenu = [
+    {
+        label: 'File',
+        submenu: [
+            { role: 'close' }
+        ]
+    },
+    {
+        label: 'Bills',
+        submenu: [
+            {
+                label: 'Open Bills Page',
+                click: () => {
+                    if (mainWindow && mainWindow.webContents) {
+                        mainWindow.webContents.send('open-bills-page');
+                    } else {
+                        console.error('Main window or webContents not defined.');
+                    }
+                }
+            }
+        ]
+    },
+];
+
+const menu = Menu.buildFromTemplate(customMenu);
+Menu.setApplicationMenu(menu);
 
 app.whenReady().then(() => {
     log.info('App is ready, creating window...');

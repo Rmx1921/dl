@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAllTicketsFromDB } from '../components/helpers/indexdb';
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import SlipModal from './SlipModal';
+import { openDB } from 'idb';
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +24,27 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [lastbillno,setBillno]=useState(0)
     const [tempBillNo, setTempBillNo] = useState(null);
 
+    async function updateSelectedTicketsStatus(selectedTickets) {
+        try {
+            const db = await openDB('lotteryDB', 1);
+            const tx = db.transaction('tickets', 'readwrite');
+            const store = tx.objectStore('tickets');
+
+            for (const ticket of selectedTickets) {
+                const existingTicket = await store.get(ticket.id);
+                if (existingTicket) {
+                    existingTicket.state = false;
+                    await store.put(existingTicket);
+                }
+            }
+
+            await tx.done;
+            console.log('Selected tickets status updated successfully');
+        } catch (error) {
+            console.error('Error updating ticket status:', error);
+        }
+    }
+
     useEffect(()=>{
           async function fetchbillno(){
             const billno = await getLastBillNumber()
@@ -34,8 +56,9 @@ const BillingModal = ({ isOpen, onClose }) => {
     useEffect(() => {
         async function fetchTickets() {
             const ticketsFromDB = await getAllTicketsFromDB();
-            setAllTickets(ticketsFromDB);
-            const uniqueDrawDates = [...new Set(ticketsFromDB.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
+            const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
+            setAllTickets(unsoldTickets);
+            const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
             setDrawDates(uniqueDrawDates);
         }
         fetchTickets();
@@ -246,7 +269,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             groups: Object.values(rangeGroups)
         };
     });
-
+console.log(sortedSummary,'tess')
     const finalSortedSummary = sortedSummary
         .sort((a, b) => a.groups[0].series.localeCompare(b.groups[0].series))
         .map(item => ({
@@ -286,6 +309,9 @@ const BillingModal = ({ isOpen, onClose }) => {
             await saveBillNumber(tempBillNo);
             setBillno(tempBillNo);
             setTempBillNo(null);
+            await updateSelectedTicketsStatus(Array.from(selectedTickets))
+            setModalIsOpen(false)
+            handleReset()
         }
     };
 
