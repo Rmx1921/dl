@@ -72,18 +72,6 @@ const LotteryTicketGenerator = () => {
         setIsBillingModalOpen(false);
     };
 
-    // useEffect(() => {
-    //     async function fetchTickets() {
-    //         const ticketsFromDB = await getAllTicketsFromDB();
-    //         const parsedTickets = ticketsFromDB.map(ticket => ({
-    //             ...ticket,
-    //             drawDate: new Date(ticket.drawDate)
-    //         }));
-    //         setLotteryTickets(parsedTickets);
-    //     }
-
-    //     fetchTickets();
-    // }, []);
     useEffect(() => {
         async function fetchTickets() {
             try {

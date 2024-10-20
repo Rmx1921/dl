@@ -229,7 +229,6 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
     useEffect(() => {
         setCurrentBillNo(billno);
     }, [billno]);
-    console.log(ticketSummary,'giig')
 
     const handlePrint = async () => {
         console.log('handlePrint called');

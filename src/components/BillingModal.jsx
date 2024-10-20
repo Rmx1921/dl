@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllTicketsFromDB } from '../components/helpers/indexdb';
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
+import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
 import { openDB } from 'idb';
 
@@ -43,6 +44,33 @@ const BillingModal = ({ isOpen, onClose }) => {
         } catch (error) {
             console.error('Error updating ticket status:', error);
         }
+    }
+
+    const calculateTotal = (item) => {
+        const total = item.groups.reduce((acc, group) => {
+            return acc + group.ranges.reduce((groupAcc, range) => {
+                return groupAcc + range.count * range.price;
+            }, 0);
+        }, 0);
+        return pwtPrice ? total - pwtPrice : total;
+    };
+
+    const handleBillsave = async(ticketData,billNo, buyerName, pwtPrice, currentDateTime)=>{
+       try {
+           let total = calculateTotal(finalSortedSummary[0])
+            let saveData = {
+                billno: billNo,
+                name: buyerName,
+                date:currentDateTime,
+                tickets: ticketData,
+                pwt : pwtPrice,
+                totalAmount: total.toFixed(2)
+            }
+            await saveBills (saveData)
+           console.log('Bill data saved successfully');
+       } catch (error) {
+        console.error('Error saving the Bill data',error)
+       }
     }
 
     useEffect(()=>{
@@ -269,7 +297,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             groups: Object.values(rangeGroups)
         };
     });
-console.log(sortedSummary,'tess')
+    
     const finalSortedSummary = sortedSummary
         .sort((a, b) => a.groups[0].series.localeCompare(b.groups[0].series))
         .map(item => ({
@@ -308,8 +336,9 @@ console.log(sortedSummary,'tess')
         if (tempBillNo !== null) {
             await saveBillNumber(tempBillNo);
             setBillno(tempBillNo);
+            // await updateSelectedTicketsStatus(Array.from(selectedTickets))
+            await handleBillsave(selectedTickets, tempBillNo, buyerName, pwtPrice, currentDateTime)
             setTempBillNo(null);
-            await updateSelectedTicketsStatus(Array.from(selectedTickets))
             setModalIsOpen(false)
             handleReset()
         }
