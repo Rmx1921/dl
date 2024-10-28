@@ -4,7 +4,6 @@ import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import PasswordScreen from './PasswordScreen';
 
 class Lottery {
     constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
@@ -209,7 +208,7 @@ const LotteryTicketGenerator = () => {
 
     return (
         <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-8'>
-            <h1 className="text-3xl font-bold text-white mb-6 text-center">Devan Lottery</h1>
+            {/* <h1 className="text-3xl font-bold text-white mb-6 text-center">Devan Lottery</h1> */}
             <div className='p-6 mb-8'>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
                     <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(0)} ref={(el) => inputRefs.current[0] = el} />
