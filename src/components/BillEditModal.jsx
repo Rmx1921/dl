@@ -1,107 +1,191 @@
-import React, { useState, useEffect } from 'react';
-import { FiX, FiPlus } from 'react-icons/fi';
+import React, { useState } from 'react';
 
-const BillEditModal = ({ isOpen, onClose, billData, onSave }) => {
-    const [tickets, setTickets] = useState(billData?.tickets || []);
+const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
+    const [selectedTickets, setSelectedTickets] = useState(new Set());
+    const [expandedGroups, setExpandedGroups] = useState(new Set());
 
-    useEffect(() => {
-        setTickets(billData?.tickets || []);
-    }, [billData]);
+    const groupedTickets = billData.tickets.reduce((acc, ticket) => {
+        const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
+        const mainKey = `${startSerial}-${endSerial} (${startNumber}-${endNumber}) - ${ticketname}`;
 
-    const handleBackdropClick = (e) => {
-        if (e.target === e.currentTarget) {
-            onClose();
+        if (!acc[mainKey]) {
+            acc[mainKey] = {
+                info: {
+                    serialNumber,
+                    drawDate: new Date(drawDate).toLocaleDateString(),
+                    totalTickets: 0
+                },
+                subGroups: {}
+            };
         }
+
+        const subKey = `${ticket.serial}-${startNumber} to ${ticket.serial}-${endNumber}`;
+        if (!acc[mainKey].subGroups[subKey]) {
+            acc[mainKey].subGroups[subKey] = [];
+        }
+
+        acc[mainKey].subGroups[subKey].push(ticket);
+        acc[mainKey].info.totalTickets += 1;
+        return acc;
+    }, {});
+
+    const groupTicketsInFives = (tickets) => {
+        return tickets.reduce((acc, ticket, index) => {
+            const groupIndex = Math.floor(index / 5);
+            if (!acc[groupIndex]) {
+                acc[groupIndex] = [];
+            }
+            acc[groupIndex].push(ticket);
+            return acc;
+        }, []);
     };
 
-    const handleAddTicket = () => {
-        setTickets([...tickets, '']);
+    const handleGroupExpand = (groupKey) => {
+        setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(groupKey)) {
+                newSet.delete(groupKey);
+            } else {
+                newSet.add(groupKey);
+            }
+            return newSet;
+        });
     };
 
-    const handleRemoveTicket = (index) => {
-        const newTickets = tickets.filter((_, i) => i !== index);
-        setTickets(newTickets);
-    };
+    const handleSelectTicket = (ticket, groupKey = null) => {
+        setSelectedTickets(prevSelected => {
+            const newSelected = new Set(prevSelected);
 
-    const handleTicketChange = (index, value) => {
-        const newTickets = [...tickets];
-        newTickets[index] = value;
-        setTickets(newTickets);
-    };
+            if (groupKey) {
+                const [mainKey, subKey, groupIndex] = groupKey.split('|');
+                const mainGroup = Object.entries(groupedTickets).find(([key]) => key === mainKey);
 
-    const handleSave = () => {
-        const validTickets = tickets.filter(ticket => ticket.trim() !== '');
-        onSave({ ...billData, tickets: validTickets });
-        onClose();
-    };
+                if (mainGroup) {
+                    let ticketsToToggle;
+                    if (groupIndex !== undefined) {
+                        ticketsToToggle = groupTicketsInFives(mainGroup[1].subGroups[subKey])[parseInt(groupIndex)];
+                    } else if (subKey) {
+                        ticketsToToggle = mainGroup[1].subGroups[subKey];
+                    } else {
+                        ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
+                    }
 
-    if (!isOpen) return null;
+                    const allSelected = ticketsToToggle.every(t => newSelected.has(t));
+                    ticketsToToggle.forEach(t => {
+                        if (allSelected) {
+                            newSelected.delete(t);
+                        } else {
+                            newSelected.add(t);
+                        }
+                    });
+                }
+            } else if (ticket) {
+                if (newSelected.has(ticket)) {
+                    newSelected.delete(ticket);
+                } else {
+                    newSelected.add(ticket);
+                }
+            }
+            return newSelected;
+        });
+    };
+    const handleRemoveTickets = () => {
+        const remainingTickets = billData.tickets.filter(ticket => !selectedTickets.has(ticket));
+        onUpdateBill({
+            ...billData,
+            tickets: remainingTickets
+        });
+        setSelectedTickets(new Set());
+    };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" onClick={handleBackdropClick}>
-            <div className="bg-white rounded-lg w-full max-w-2xl shadow-xl" onClick={e => e.stopPropagation()}>
-                <div className="p-4 border-b">
-                    <h2 className="text-xl font-semibold">Edit Bill Details</h2>
-                </div>
+        isOpen && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="bg-white p-6 rounded-lg max-w-4xl w-full">
+                    <h2 className="text-lg font-bold mb-4">Edit Bill - {billData.billno}</h2>
 
-                <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                        <div>
-                            <label className="text-sm font-medium">Bill Number</label>
-                            <p className="text-gray-700">{billData?.billno}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Buyer Name</label>
-                            <p className="text-gray-700">{billData?.name}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Date</label>
-                            <p className="text-gray-700">{billData?.date}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Total Amount</label>
-                            <p className="text-gray-700">{billData?.totalAmount}</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-lg font-medium">Tickets</label>
-                            <button onClick={handleAddTicket} className="flex items-center gap-2 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm">
-                                <FiPlus className="w-4 h-4" />
-                                Add Ticket
-                            </button>
-                        </div>
-
-                        <div className="space-y-2">
-                            {tickets.map((ticket, index) => (
-                                <div key={index} className="flex items-center gap-2">
+                    <div className="max-h-96 overflow-y-auto">
+                        {Object.entries(groupedTickets).map(([mainKey, groupData]) => (
+                            <div key={mainKey} className="my-2 border border-gray-200 p-2 rounded-md">
+                                <div className="flex items-center cursor-pointer">
                                     <input
-                                        type="text"
-                                        value={ticket}
-                                        onChange={(e) => handleTicketChange(index, e.target.value)}
-                                        placeholder="Enter ticket details"
-                                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        type="checkbox"
+                                        checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))}
+                                        onChange={() => handleSelectTicket(null, mainKey)}
+                                        className="mr-2"
                                     />
-                                    <button onClick={() => handleRemoveTicket(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-md">
-                                        <FiX className="w-4 h-4" />
-                                    </button>
+                                    <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
+                                        {expandedGroups.has(mainKey) ? '▼' : '▶'} {mainKey}
+                                        {groupData.info &&
+                                            ` (${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${groupData.info.drawDate}]`
+                                        }
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
 
-                <div className="p-4 border-t flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 border rounded-md hover:bg-gray-50">
-                        Cancel
-                    </button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                        Save Changes
-                    </button>
+                                {expandedGroups.has(mainKey) && (
+                                    <div className="ml-6 mt-2">
+                                        {Object.entries(groupData.subGroups).map(([subKey, tickets]) => (
+                                            <div key={subKey} className="my-1">
+                                                <div className="flex items-center cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={tickets.every(t => selectedTickets.has(t))}
+                                                        onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)}
+                                                        className="mr-2"
+                                                    />
+                                                    <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}`)}>
+                                                        {expandedGroups.has(`${mainKey}-${subKey}`) ? '▼' : '▶'} {subKey}
+                                                    </span>
+                                                </div>
+
+                                                {expandedGroups.has(`${mainKey}-${subKey}`) && (
+                                                    <div className="ml-6 mt-2">
+                                                        {groupTicketsInFives(tickets).map((ticketGroup, groupIndex) => (
+                                                            <div key={groupIndex} className="my-1">
+                                                                <div className="flex items-center cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={ticketGroup.every(t => selectedTickets.has(t))}
+                                                                        onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
+                                                                        className="mr-2"
+                                                                    />
+                                                                    <span>
+                                                                        {ticketGroup[0].serial}-{ticketGroup[0].number} to {ticketGroup[ticketGroup.length - 1].serial}-{ticketGroup[ticketGroup.length - 1].number}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            onClick={handleRemoveTickets}
+                            disabled={selectedTickets.size === 0}
+                            className={`px-4 py-2 rounded ${selectedTickets.size === 0
+                                    ? 'bg-gray-300 cursor-not-allowed'
+                                    : 'bg-red-500 hover:bg-red-600 text-white'
+                                }`}
+                        >
+                            Remove Selected Tickets
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        )
     );
 };
 

@@ -63,7 +63,7 @@ const BillDetails = () => {
             name: bill.name,
             totalAmount: bill.totalAmount,
             date: formatDate(bill.date),
-            tickets: Array.from(bill.ticks)
+            tickets: Array.from(bill.tickets)
         }));
         setBillsData(processed);
     };
@@ -177,35 +177,53 @@ const BillDetails = () => {
             <div className="bg-white rounded-lg shadow flex-grow overflow-hidden">
                 <table {...getTableProps()} className="min-w-full">
                     <thead>
-                        {headerGroups.map(headerGroup => (
-                            <tr {...headerGroup.getHeaderGroupProps()} className="bg-gray-50 border-b">
-                                {headerGroup.headers.map(column => (
-                                    <th {...column.getHeaderProps(column.getSortByToggleProps())} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        {column.render('Header')}
-                                        <span>
-                                            {column.isSorted
-                                                ? column.isSortedDesc
-                                                    ? <ChevronDown className="w-4 h-4 inline-block ml-1" />
-                                                    : <ChevronUp className="w-4 h-4 inline-block ml-1" />
-                                                : ''}
-                                        </span>
-                                    </th>
-                                ))}
-                            </tr>
-                        ))}
+                        {headerGroups.map(headerGroup => {
+                            const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
+                            return (
+                                <tr key={key} {...headerGroupProps} className="bg-gray-50 border-b">
+                                    {headerGroup.headers.map(column => {
+                                        const { key, ...columnProps } = column.getHeaderProps(column.getSortByToggleProps());
+                                        return (
+                                            <th
+                                                key={key}
+                                                {...columnProps}
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                            >
+                                                {column.render('Header')}
+                                                <span>
+                                                    {column.isSorted
+                                                        ? column.isSortedDesc
+                                                            ? <ChevronDown className="w-4 h-4 inline-block ml-1" />
+                                                            : <ChevronUp className="w-4 h-4 inline-block ml-1" />
+                                                        : ''}
+                                                </span>
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                            );
+                        })}
                     </thead>
                     <tbody {...getTableBodyProps()}>
                         {page.map(row => {
-                            prepareRow(row)
+                            prepareRow(row);
+                            const { key, ...rowProps } = row.getRowProps();
                             return (
-                                <tr {...row.getRowProps()} className="bg-white border-b">
-                                    {row.cells.map(cell => (
-                                        <td {...cell.getCellProps()} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {cell.render('Cell')}
-                                        </td>
-                                    ))}
+                                <tr key={key} {...rowProps} className="bg-white border-b">
+                                    {row.cells.map(cell => {
+                                        const { key, ...cellProps } = cell.getCellProps();
+                                        return (
+                                            <td
+                                                key={key}
+                                                {...cellProps}
+                                                className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                            >
+                                                {cell.render('Cell')}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
-                            )
+                            );
                         })}
                     </tbody>
                 </table>
@@ -246,12 +264,14 @@ const BillDetails = () => {
                     <ChevronRight className="w-4 h-4 ml-2" />
                 </button>
             </div>
-            <BillEditModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                billData={selectedBill}
-                onSave={handleSaveEdit}
-            />
+            {isModalOpen && (
+                <BillEditModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    billData={selectedBill}
+                    onSave={handleSaveEdit}
+                />
+            )}
         </div>
     );
 };
