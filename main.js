@@ -172,7 +172,18 @@ const customMenu = [
     {
         label: 'File',
         submenu: [
-            { role: 'close' }
+            { role: 'close' },
+            {
+                label: 'Reload',
+                accelerator: 'CmdOrCtrl+R', 
+                click: () => {
+                    if (mainWindow && mainWindow.webContents) {
+                        mainWindow.webContents.reload();
+                    } else {
+                        console.error('Main window or webContents not defined.');
+                    }
+                }
+            }
         ]
     },
     {
