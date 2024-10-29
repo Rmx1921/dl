@@ -4,8 +4,9 @@ import { Search, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } f
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from 'react-router-dom';
-import { findBills, getBills } from './helpers/billsdb';
+import { findBills, getBills,saveBills} from './helpers/billsdb';
 import BillEditModal from './BillEditModal';
+
 
 const BillDetails = () => {
     const navigate = useNavigate();
@@ -26,10 +27,7 @@ const BillDetails = () => {
 
     const handleSaveEdit = async (updatedBill) => {
         try {
-            // Add your API call here to update the bill
-            // await updateBill(updatedBill);
-
-            // Refresh the bills data
+            await saveBills(updatedBill)
             await fetchBills(pageIndex, pageSize);
             setIsModalOpen(false);
             setSelectedBill(null);
@@ -63,7 +61,10 @@ const BillDetails = () => {
             name: bill.name,
             totalAmount: bill.totalAmount,
             date: formatDate(bill.date),
-            tickets: Array.from(bill.tickets)
+            tickets: Array.from(bill.tickets),
+            pwt: bill.pwt,
+            ticketPrice: bill?.ticketPrice,
+            type:bill?.type
         }));
         setBillsData(processed);
     };
@@ -77,6 +78,7 @@ const BillDetails = () => {
     const columns = React.useMemo(
         () => [
             { Header: 'BillNo', accessor: 'billno' },
+            { Header: 'Type',accessor: 'type'},
             { Header: 'Buyer Name', accessor: 'name' },
             { Header: 'Date', accessor: 'date' },
             { Header: 'Amount', accessor: 'totalAmount' },
@@ -270,6 +272,7 @@ const BillDetails = () => {
                     onClose={() => setIsModalOpen(false)}
                     billData={selectedBill}
                     onSave={handleSaveEdit}
+                    onUpdateBill={handleSaveEdit}
                 />
             )}
         </div>

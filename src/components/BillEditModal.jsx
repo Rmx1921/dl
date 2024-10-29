@@ -1,8 +1,30 @@
 import React, { useState } from 'react';
+import { openDB } from 'idb';
 
 const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [expandedGroups, setExpandedGroups] = useState(new Set());
+    
+    async function updateSelectedTicketsStatus(selectedTickets) {
+        try {
+            const db = await openDB('lotteryDB', 1);
+            const tx = db.transaction('tickets', 'readwrite');
+            const store = tx.objectStore('tickets');
+
+            for (const ticket of selectedTickets) {
+                const existingTicket = await store.get(ticket.id);
+                if (existingTicket) {
+                    existingTicket.state = true;
+                    await store.put(existingTicket);
+                }
+            }
+
+            await tx.done;
+            console.log('Selected tickets status updated successfully');
+        } catch (error) {
+            console.error('Error updating ticket status:', error);
+        }
+    }
 
     const groupedTickets = billData.tickets.reduce((acc, ticket) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
@@ -52,6 +74,11 @@ const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
         });
     };
 
+    const handleCancel = ()=>{
+        setSelectedTickets(new Set());
+        onClose()
+    }
+
     const handleSelectTicket = (ticket, groupKey = null) => {
         setSelectedTickets(prevSelected => {
             const newSelected = new Set(prevSelected);
@@ -89,12 +116,23 @@ const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
             return newSelected;
         });
     };
+     
+    const calculateTotal = (item,pwt,price) => {
+       let total = item.length * price;
+        return pwt ? total - pwt : total;
+    };
+   
     const handleRemoveTickets = () => {
         const remainingTickets = billData.tickets.filter(ticket => !selectedTickets.has(ticket));
+        let total = calculateTotal(Array.from(remainingTickets),billData.pwt,billData.ticketPrice)
         onUpdateBill({
             ...billData,
+            type:'Duplicate',
+            date: new Date(),
+            totalAmount: total.toFixed(2),
             tickets: remainingTickets
         });
+        updateSelectedTicketsStatus(Array.from(selectedTickets))
         setSelectedTickets(new Set());
     };
 
@@ -177,7 +215,7 @@ const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
                             Remove Selected Tickets
                         </button>
                         <button
-                            onClick={onClose}
+                            onClick={handleCancel}
                             className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded"
                         >
                             Cancel

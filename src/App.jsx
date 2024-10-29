@@ -7,12 +7,14 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    window.electronAPI.onOpenBillsPage(() => {
-      navigate('/bills');
-    });
-    return () => {
-      window.electronAPI.removeAllListeners('open-bills-page');
-    };
+    if (window.electronAPI && window.electronAPI.onOpenBillsPage ){
+      window.electronAPI.onOpenBillsPage(() => {
+        navigate('/bills');
+      });
+      return () => {
+        window.electronAPI.removeAllListeners('open-bills-page');
+      };
+    }
   }, [navigate]);
   
   return (

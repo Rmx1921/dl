@@ -59,12 +59,14 @@ const BillingModal = ({ isOpen, onClose }) => {
        try {
            let total = calculateTotal(finalSortedSummary[0])
             let saveData = {
+                type:'Original',
                 billno: billNo,
                 name: buyerName,
                 date:currentDateTime,
                 tickets: ticketData,
                 pwt : pwtPrice,
-                totalAmount: total.toFixed(2)
+                totalAmount: total.toFixed(2),
+                ticketPrice: selectedPrice
             }
             await saveBills (saveData)
            console.log('Bill data saved successfully');
