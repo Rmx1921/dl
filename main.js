@@ -1,14 +1,19 @@
-const { app, BrowserWindow, ipcMain,Menu} = require('electron');
-const path = require('path');
-const fs = require('fs').promises;
-const url = require('url');
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
+import path from 'path';
+import { promises as fs } from 'fs';
+import { fileURLToPath } from 'url';
+import url from 'url';
+import log from 'electron-log';
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const isDev = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
-const log = require('electron-log');
 
 log.transports.file.level = 'debug';
 log.transports.console.level = 'debug';
 log.info('Application Starting...');
-
 log.info(`Running in ${isDev ? 'development' : 'production'} mode`);
 
 function simplifiedMonitorPrintJob(jobId) {
@@ -33,12 +38,12 @@ function simplifiedMonitorPrintJob(jobId) {
 function loadProductionBuild(mainWindow) {
     log.info('Loading production build...');
     const startUrl = url.format({
-        pathname: path.join(__dirname, './dist/index.html'),
+        pathname: path.join(__dirname, 'dist', 'index.html'),
         protocol: 'file:',
         slashes: true
     });
     log.info(`Start URL: ${startUrl}`);
-    mainWindow.loadFile(path.join(__dirname, './dist/index.html')).catch(err => {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(err => {
         log.error('Failed to load app:', err);
         app.quit();
     });
@@ -46,24 +51,18 @@ function loadProductionBuild(mainWindow) {
 
 let mainWindow;
 
-function waitForViteServer(mainWindow, retries = 30, delay = 1000) {
-    return new Promise((resolve, reject) => {
-        const tryLoad = (retriesLeft) => {
-            mainWindow.loadURL('http://localhost:5173').then(() => {
-                log.info('Successfully connected to Vite dev server');
-                resolve();
-            }).catch(err => {
-                if (retriesLeft > 0) {
-                    log.info(`Failed to connect to Vite dev server. Retrying in ${delay}ms... (${retriesLeft} attempts left)`);
-                    setTimeout(() => tryLoad(retriesLeft - 1), delay);
-                } else {
-                    log.error('Failed to connect to Vite dev server after multiple attempts');
-                    reject(err);
-                }
-            });
-        };
-        tryLoad(retries);
-    });
+async function waitForViteServer(mainWindow, retries = 30, delay = 1000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            await mainWindow.loadURL('http://localhost:5173');
+            log.info('Successfully connected to Vite dev server');
+            return;
+        } catch (err) {
+            log.info(`Failed to connect to Vite dev server. Attempt ${i + 1}/${retries}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    throw new Error('Failed to connect to Vite dev server after multiple attempts');
 }
 
 function createWindow() {
@@ -71,24 +70,19 @@ function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
     log.info(`Preload path: ${preloadPath}`);
 
-      mainWindow = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             preload: preloadPath,
-            sandbox: true
+            sandbox: true,
+            webSecurity: !isDev,
+            devTools: true
         },
     });
     log.info('Main window created');
-
-    const startUrl = url.format({
-        pathname: path.join(__dirname, 'dist', 'index.html'),
-        protocol: 'file:',
-        slashes: true
-    });
-    log.info(`Start URL: ${startUrl}`);
 
     if (isDev) {
         log.info('Attempting to connect to development server...');
@@ -96,6 +90,9 @@ function createWindow() {
             .then(() => {
                 log.info('Development server connected, opening DevTools');
                 mainWindow.webContents.openDevTools();
+                if (process.env.REACT_DEVTOOLS_PATH) {
+                    BrowserWindow.addDevToolsExtension(process.env.REACT_DEVTOOLS_PATH);
+                }
             })
             .catch(err => {
                 log.error('Failed to load dev server:', err);
@@ -175,7 +172,7 @@ const customMenu = [
             { role: 'close' },
             {
                 label: 'Reload',
-                accelerator: 'CmdOrCtrl+R', 
+                accelerator: 'CmdOrCtrl+R',
                 click: () => {
                     if (mainWindow && mainWindow.webContents) {
                         mainWindow.webContents.reload();
