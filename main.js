@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
 import url from 'url';
 import log from 'electron-log';
+import { autoUpdater } from 'electron-updater';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -118,6 +119,20 @@ function createWindow() {
         }
     });
 
+    autoUpdater.checkForUpdatesAndNotify();
+
+    autoUpdater.on('update-available', () => {
+        mainWindow.webContents.send('update-available');
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+        mainWindow.webContents.send('update-downloaded');
+    });
+
+    ipcMain.on('quit-and-install', () => {
+        autoUpdater.quitAndInstall();
+    });
+
     ipcMain.handle('print', async (event) => {
         log.info('Print request received');
         const win = BrowserWindow.fromWebContents(event.sender);
@@ -198,6 +213,17 @@ const customMenu = [
             }
         ]
     },
+    {
+        label: 'Help',
+        submenu: [
+            {
+                label: 'Check for Updates',
+                click: () => {
+                    mainWindow.webContents.send('check-for-updates');
+                }
+            }
+        ]
+    }
 ];
 
 const menu = Menu.buildFromTemplate(customMenu);
