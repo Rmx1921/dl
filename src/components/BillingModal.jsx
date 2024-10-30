@@ -338,7 +338,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         if (tempBillNo !== null) {
             await saveBillNumber(tempBillNo);
             setBillno(tempBillNo);
-            // await updateSelectedTicketsStatus(Array.from(selectedTickets))
+            await updateSelectedTicketsStatus(Array.from(selectedTickets))
             await handleBillsave(selectedTickets, tempBillNo, buyerName, pwtPrice, currentDateTime)
             setTempBillNo(null);
             setModalIsOpen(false)
