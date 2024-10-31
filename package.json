@@ -66,7 +66,8 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "artifactName": "DL.exe"
     },
     "mac": {
       "target": [
@@ -78,11 +79,12 @@
         "AppImage"
       ]
     },
-    "publish": {
-    "provider": "github",
-    "releaseType": "release",
-    "owner": "NeeharPrem",
-    "repo": "private"
+   "publish": {
+      "provider": "github",
+      "owner": "NeeharPrem",
+      "repo": "private",
+      "private": true,
+      "releaseType": "release"
   }
   },
   "homepage": "./"
