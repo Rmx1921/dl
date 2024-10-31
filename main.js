@@ -4,8 +4,8 @@ import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
 import url from 'url';
 import log from 'electron-log';
-import { autoUpdater } from 'electron-updater';
-
+import pkg from 'electron-updater';
+const { autoUpdater } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +16,53 @@ log.transports.file.level = 'debug';
 log.transports.console.level = 'debug';
 log.info('Application Starting...');
 log.info(`Running in ${isDev ? 'development' : 'production'} mode`);
+
+autoUpdater.logger = log;
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+function setupAutoUpdater(mainWindow) {
+    if (isDev) {
+        log.info('Auto-updater disabled in development mode');
+        return;
+    }
+
+    autoUpdater.on('checking-for-update', () => {
+        log.info('Checking for updates...');
+        mainWindow.webContents.send('update-checking');
+    });
+
+    autoUpdater.on('update-available', (info) => {
+        log.info('Update available:', info);
+        mainWindow.webContents.send('update-available', info);
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+        log.info('Update not available:', info);
+        mainWindow.webContents.send('update-not-available', info);
+    });
+
+    autoUpdater.on('error', (err) => {
+        log.error('Update error:', err);
+        mainWindow.webContents.send('update-error', err.message);
+    });
+
+    autoUpdater.on('download-progress', (progressObj) => {
+        const { bytesPerSecond, percent, transferred, total } = progressObj;
+        log.info('Download progress:', percent);
+        mainWindow.webContents.send('update-progress', {
+            bytesPerSecond,
+            percent,
+            transferred,
+            total
+        });
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+        log.info('Update downloaded:', info);
+        mainWindow.webContents.send('update-downloaded', info);
+    });
+}
 
 function simplifiedMonitorPrintJob(jobId) {
     let progress = 0;
@@ -38,12 +85,6 @@ function simplifiedMonitorPrintJob(jobId) {
 
 function loadProductionBuild(mainWindow) {
     log.info('Loading production build...');
-    const startUrl = url.format({
-        pathname: path.join(__dirname, 'dist', 'index.html'),
-        protocol: 'file:',
-        slashes: true
-    });
-    log.info(`Start URL: ${startUrl}`);
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(err => {
         log.error('Failed to load app:', err);
         app.quit();
@@ -55,7 +96,7 @@ let mainWindow;
 async function waitForViteServer(mainWindow, retries = 30, delay = 1000) {
     for (let i = 0; i < retries; i++) {
         try {
-            await mainWindow.loadURL('http://localhost:5173');
+            await mainWindow.loadURL('http://localhost:3000');
             log.info('Successfully connected to Vite dev server');
             return;
         } catch (err) {
@@ -84,6 +125,7 @@ function createWindow() {
         },
     });
     log.info('Main window created');
+    setupAutoUpdater(mainWindow);
 
     if (isDev) {
         log.info('Attempting to connect to development server...');
@@ -101,6 +143,12 @@ function createWindow() {
             });
     } else {
         loadProductionBuild(mainWindow);
+        setTimeout(() => {
+            log.info('Checking for updates...');
+            autoUpdater.checkForUpdates().catch(err => {
+                log.error('Error checking for updates:', err);
+            });
+        }, 3000);
     }
 
     mainWindow.webContents.on('did-finish-load', () => {
@@ -119,18 +167,30 @@ function createWindow() {
         }
     });
 
-    autoUpdater.checkForUpdatesAndNotify();
-
-    autoUpdater.on('update-available', () => {
-        mainWindow.webContents.send('update-available');
+    ipcMain.handle('check-for-updates', async () => {
+        if (!app.isPackaged) {
+            return { status: 'disabled', message: 'Auto-updates are disabled in development' };
+        }
+        try {
+            return await autoUpdater.checkForUpdates();
+        } catch (error) {
+            log.error('Failed to check for updates:', error);
+            throw error;
+        }
     });
 
-    autoUpdater.on('update-downloaded', () => {
-        mainWindow.webContents.send('update-downloaded');
+    ipcMain.handle('start-download', async () => {
+        try {
+            await autoUpdater.downloadUpdate();
+            return { status: 'success' };
+        } catch (error) {
+            log.error('Failed to start download:', error);
+            throw error;
+        }
     });
 
-    ipcMain.on('quit-and-install', () => {
-        autoUpdater.quitAndInstall();
+    ipcMain.handle('quit-and-install', () => {
+        autoUpdater.quitAndInstall(false, true);
     });
 
     ipcMain.handle('print', async (event) => {
@@ -195,7 +255,17 @@ const customMenu = [
                         console.error('Main window or webContents not defined.');
                     }
                 }
-            }
+            },
+            // {
+            //     label: 'Check for Updates',
+            //     click: () => {
+            //         if (!isDev) {
+            //             autoUpdater.checkForUpdates().catch(err => {
+            //                 log.error('Error checking for updates:', err);
+            //             });
+            //         }
+            //     }
+            // }
         ]
     },
     {
@@ -219,7 +289,11 @@ const customMenu = [
             {
                 label: 'Check for Updates',
                 click: () => {
-                    mainWindow.webContents.send('check-for-updates');
+                    if (mainWindow && mainWindow.webContents) {
+                        mainWindow.webContents.send('open-updater-page');
+                    } else {
+                        console.error('Main window or webContents not defined.');
+                    }
                 }
             }
         ]

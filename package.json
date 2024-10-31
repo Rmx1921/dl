@@ -80,7 +80,9 @@
     },
     "publish": {
     "provider": "github",
-    "releaseType": "release"
+    "releaseType": "release",
+    "owner": "NeeharPrem",
+    "repo": "private"
   }
   },
   "homepage": "./"
