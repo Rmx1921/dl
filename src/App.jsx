@@ -2,26 +2,37 @@ import React, { useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import SerialNumberGenerator from './components/SerialNumberGenerator';
 import BillDetails from './components/BillDetails';
+import UpdateManager from './components/UpdateManager';
 
 function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (window.electronAPI && window.electronAPI.onOpenBillsPage) {
-      try {
-        window.electronAPI.onOpenBillsPage(() => {
-          navigate('/bills');
-        });
-
-        return () => {
-          if (window.electronAPI.removeAllListeners) {
-            window.electronAPI.removeAllListeners('open-bills-page');
-          }
-        };
-      } catch (error) {
-        console.error('Error setting up electron event listener:', error);
+    if (!window.electronAPI) return;
+    const routeHandlers = [
+      { event: 'onOpenBillsPage', path: '/bills', listenerName: 'open-bills-page' },
+      { event: 'onOpenUpdaterPage', path: '/updater', listenerName: 'open-updater-page' }
+    ];
+    const cleanup = routeHandlers.map(handler => {
+      if (window.electronAPI[handler.event]) {
+        try {
+          const navigationListener = () => navigate(handler.path);
+          window.electronAPI[handler.event](navigationListener);
+          return () => {
+            if (window.electronAPI.removeAllListeners) {
+              window.electronAPI.removeAllListeners(handler.listenerName);
+            }
+          };
+        } catch (error) {
+          console.error(`Error setting up ${handler.event} listener:`, error);
+          return null;
+        }
       }
-    }
+      return null;
+    }).filter(Boolean);
+    return () => {
+      cleanup.forEach(cleanupFn => cleanupFn());
+    };
   }, [navigate]);
 
   return (
@@ -29,6 +40,7 @@ function App() {
       <Routes>
         <Route path="/" element={<SerialNumberGenerator />} />
         <Route path="/bills" element={<BillDetails />} />
+        <Route path="/updater" element={<UpdateManager />} />
       </Routes>
     </div>
   );
