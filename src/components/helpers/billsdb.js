@@ -36,6 +36,23 @@ async function getBills(limit = 10, offset = 0) {
     return bills;
 }
 
+async function getAllBillData() {
+    const db = await initializeUserDB();
+    const tx = db.transaction(USER_STORE_NAME, 'readonly');
+    const store = tx.objectStore(USER_STORE_NAME);
+
+    const bills = [];
+    let cursor = await store.openCursor();
+
+    while (cursor) {
+        bills.push(cursor.value);
+        cursor = await cursor.continue();
+    }
+
+    return bills;
+}
+
+
 async function saveBills(newBillData) {
     const db = await initializeUserDB();
     const tx = db.transaction(USER_STORE_NAME, 'readwrite');
@@ -85,4 +102,4 @@ async function findBills(query,field) {
     return bills;
 }
 
-export { saveBills, getBills, editBills,findBills};
+export { saveBills, getBills, editBills, findBills, getAllBillData };
