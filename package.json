@@ -1,5 +1,5 @@
 {
-  "name": "vite",
+  "name": "Devan Lottery",
   "private": true,
   "version": "1.0.1",
   "type": "module",
@@ -66,8 +66,7 @@
     "win": {
       "target": [
         "nsis"
-      ],
-      "artifactName": "DL.exe"
+      ]
     },
     "mac": {
       "target": [
@@ -79,13 +78,13 @@
         "AppImage"
       ]
     },
-   "publish": {
+    "publish": {
       "provider": "github",
       "owner": "NeeharPrem",
       "repo": "private",
       "private": true,
       "releaseType": "release"
-  }
+    }
   },
   "homepage": "./"
 }
