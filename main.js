@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
-import url from 'url';
 import log from 'electron-log';
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
@@ -244,10 +243,8 @@ const customMenu = [
     {
         label: 'File',
         submenu: [
-            { role: 'close' },
             {
                 label: 'Reload',
-                accelerator: 'CmdOrCtrl+R',
                 click: () => {
                     if (mainWindow && mainWindow.webContents) {
                         mainWindow.webContents.reload();
@@ -260,22 +257,13 @@ const customMenu = [
                 label: 'Export/import data',
                 click: () => {
                     if (mainWindow && mainWindow.webContents) {
-                        mainWindow.webContents.send('open-export-page');
+                        mainWindow.webContents.send('open-export-modal');
                     } else {
                         console.error('Main window or webContents not defined.');
                     }
                 }
             },
-            // {
-            //     label: 'Check for Updates',
-            //     click: () => {
-            //         if (!isDev) {
-            //             autoUpdater.checkForUpdates().catch(err => {
-            //                 log.error('Error checking for updates:', err);
-            //             });
-            //         }
-            //     }
-            // }
+            { role: 'close' },
         ]
     },
     {
