@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, Check, AlertCircle, Download, X } from 'lucide-react';
-import { getAllBillData } from './helpers/billsdb';
+import { getAllBillData, importBillData } from './helpers/billsdb';
 import { useModal } from '../contexts/ModalContext';
 
 const ExportImportModal = () => {
@@ -59,19 +59,18 @@ const ExportImportModal = () => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
-                    const jsonData = JSON.parse(e.target.result);
-                    //restore function
+                    const result = await importBillData(e.target.result);
                     setStatus({
                         success: true,
                         error: false,
-                        message: 'Bill data restored successfully',
+                        message: result.message,
                         type: 'import'
                     });
                 } catch (error) {
                     setStatus({
                         success: false,
                         error: true,
-                        message: 'Invalid JSON file format',
+                        message: error.message || 'Failed to import data',
                         type: 'import'
                     });
                 } finally {
