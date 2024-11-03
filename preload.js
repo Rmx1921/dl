@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getData: () => ipcRenderer.invoke('get-data'),
   onOpenBillsPage: (callback) => ipcRenderer.on('open-bills-page', callback),
   onOpenUpdaterPage: (callback) => ipcRenderer.on('open-updater-page', callback),
+  onOpenExportPage: (callback) => ipcRenderer.on('open-export-page', callback),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   onDataUpdate: (callback) => {
     const channel = 'data-update';

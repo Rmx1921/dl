@@ -256,6 +256,16 @@ const customMenu = [
                     }
                 }
             },
+            {
+                label: 'Export/import data',
+                click: () => {
+                    if (mainWindow && mainWindow.webContents) {
+                        mainWindow.webContents.send('open-export-page');
+                    } else {
+                        console.error('Main window or webContents not defined.');
+                    }
+                }
+            },
             // {
             //     label: 'Check for Updates',
             //     click: () => {

@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import SerialNumberGenerator from './components/SerialNumberGenerator';
 import BillDetails from './components/BillDetails';
 import UpdateManager from './components/UpdateManager';
+import DataExport from './components/DataExport';
 
 function App() {
   const navigate = useNavigate();
@@ -11,7 +12,8 @@ function App() {
     if (!window.electronAPI) return;
     const routeHandlers = [
       { event: 'onOpenBillsPage', path: '/bills', listenerName: 'open-bills-page' },
-      { event: 'onOpenUpdaterPage', path: '/updater', listenerName: 'open-updater-page' }
+      { event: 'onOpenUpdaterPage', path: '/updater', listenerName: 'open-updater-page' },
+      { event: 'onOpenExportPage', path: '/export', listenerName: 'open-export-page' }
     ];
     const cleanup = routeHandlers.map(handler => {
       if (window.electronAPI[handler.event]) {
@@ -41,6 +43,7 @@ function App() {
         <Route path="/" element={<SerialNumberGenerator />} />
         <Route path="/bills" element={<BillDetails />} />
         <Route path="/updater" element={<UpdateManager />} />
+        <Route path="/export" element={<DataExport />} />
       </Routes>
     </div>
   );
