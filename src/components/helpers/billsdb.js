@@ -1,8 +1,8 @@
 import { openDB } from 'idb';
-import { getLastBillNumber } from './billnodb'
 
 const USER_DB_NAME = 'billsData';
 const USER_STORE_NAME = 'bills';
+const CHUNK_SIZE = 100;
 
 
 async function initializeUserDB() {
@@ -102,4 +102,54 @@ async function findBills(query,field) {
     return bills;
 }
 
-export { saveBills, getBills, editBills, findBills, getAllBillData };
+async function importBillData(jsonData) {
+    const db = await openDB(USER_DB_NAME, 1, {
+        upgrade(db) {
+            if (!db.objectStoreNames.contains(USER_STORE_NAME)) {
+                db.createObjectStore(USER_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            }
+        },
+    });
+
+    try {
+        let processedCount = 0;
+        const bills = Array.isArray(jsonData) ? jsonData : JSON.parse(jsonData);
+        const totalRecords = bills.length;
+
+        for (let i = 0; i < totalRecords; i += CHUNK_SIZE) {
+            const chunk = bills.slice(i, i + CHUNK_SIZE);
+
+            const tx = db.transaction(USER_STORE_NAME, 'readwrite');
+            const store = tx.objectStore(USER_STORE_NAME);
+
+            const promises = chunk.map(bill => {
+                const billData = { ...bill };
+                delete billData.id;
+                return store.add(billData);
+            });
+
+            await Promise.all(promises);
+            await tx.done;
+
+            processedCount += chunk.length;
+        }
+
+        return {
+            success: true,
+            message: `Successfully imported ${processedCount} records`,
+            totalProcessed: processedCount
+        };
+
+    } catch (error) {
+        console.error('Import error:', error);
+        throw {
+            success: false,
+            message: error.message || 'Failed to import bill data',
+            error: error
+        };
+    } finally {
+        db.close();
+    }
+}
+
+export { saveBills, getBills, editBills, findBills, getAllBillData, importBillData };
