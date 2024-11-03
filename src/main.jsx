@@ -6,14 +6,17 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Modal from 'react-modal';
 import { HashRouter } from 'react-router-dom';
+import { ModalProvider } from './contexts/ModalContext';
 
 Modal.setAppElement('#root');
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HashRouter>
-      <App />
-      <ToastContainer />
+      <ModalProvider>
+        <App />
+        <ToastContainer />
+      </ModalProvider>
     </HashRouter>
   </React.StrictMode>
 );
