@@ -172,7 +172,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                         <React.Fragment key={index}>
                             <tr>
                                 <td style={styles.tableCell}>{index + 1}.</td>
-                                <td style={styles.tableCell}>{item.ticketname} - {item.drawDate}</td>
+                                <td style={styles.tableCell}>{item.ticketname} {item.serialNum} - {item.drawDate}</td>
                                 <td style={styles.tableCell}></td>
                                 <td style={styles.tableCell}></td>
                                 <td style={styles.tableCell}></td>

@@ -84,15 +84,17 @@ const BillingModal = ({ isOpen, onClose }) => {
     },[])
 
     useEffect(() => {
-        async function fetchTickets() {
-            const ticketsFromDB = await getAllTicketsFromDB();
-            const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
-            setAllTickets(unsoldTickets);
-            const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
-            setDrawDates(uniqueDrawDates);
+        if (isOpen) {
+            async function fetchTickets() {
+                const ticketsFromDB = await getAllTicketsFromDB();
+                const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
+                setAllTickets(unsoldTickets);
+                const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
+                setDrawDates(uniqueDrawDates);
+            }
+            fetchTickets();
         }
-        fetchTickets();
-    }, []);
+    }, [isOpen]);
 
     const handleDrawDateChange = (event) => {
         setSelectedDrawDate(event.target.value);
@@ -236,10 +238,12 @@ const BillingModal = ({ isOpen, onClose }) => {
         const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
         const seriesKey = `${ticketname}-${drawDate}`;
         const date = ticket.drawDate
+        const serialNum = ticket.serialNumber
         if (!acc[seriesKey]) {
             acc[seriesKey] = {
                 ticketname,
                 drawDate: new Date(date).toLocaleDateString(),
+                serialNum,
                 ranges: {}
             };
         }
@@ -249,6 +253,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                 startNumber,
                 endNumber,
                 series: {},
+                serialNum,
                 price: Number(selectedPrice)
             };
         }
@@ -296,6 +301,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         return {
             ticketname: value.ticketname,
             drawDate: value.drawDate,
+            serialNum: value.serialNum,
             groups: Object.values(rangeGroups)
         };
     });
@@ -304,6 +310,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         .sort((a, b) => a.groups[0].series.localeCompare(b.groups[0].series))
         .map(item => ({
             ...item,
+            serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
             groups: item.groups.map(group => ({
                 ...group,
                 ranges: group.ranges.sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
