@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { FaEdit, FaTrash, FaDownload } from 'react-icons/fa';
 
 class Lottery {
     constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
@@ -205,118 +206,96 @@ const LotteryTicketGenerator = () => {
         Object.entries(ticketSummary).filter(([prefix]) => selectedSerials.includes(prefix))
     );
 
-
     return (
-        <div className='flex flex-col w-full bg-gradient-to-br from-pink-500 to-yellow-300 min-h-screen p-8'>
-            {/* <h1 className="text-3xl font-bold text-white mb-6 text-center">Devan Lottery</h1> */}
-            <div className='p-6 mb-8'>
-                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(0)} ref={(el) => inputRefs.current[0] = el} />
-                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} onEnterPress={() => handleEnterPress(1)} ref={(el) => inputRefs.current[1] = el} />
-                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} onEnterPress={() => handleEnterPress(2)} ref={(el) => inputRefs.current[2] = el} />
-                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} onEnterPress={() => handleEnterPress(3)} ref={(el) => inputRefs.current[3] = el} />
-                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} onEnterPress={() => handleEnterPress(4)} ref={(el) => inputRefs.current[4] = el} />
-                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} onEnterPress={() => handleEnterPress(5)} ref={(el) => inputRefs.current[5] = el} />
+        <div className="flex flex-col w-full min-h-screen p-8 bg-[#f0f0f0]">
+            <div className="bg-white p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} />
+                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} />
+                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} />
+                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} />
+                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
+                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} />
                     <div className="mb-4">
                         <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>
                         <DatePicker
                             selected={drawDate}
                             onChange={date => setDrawDate(date)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-4 py-2 border border-gray-300"
                         />
                     </div>
                 </div>
-                <div className="flex justify-center mt-6 space-x-4">
+                <div className="flex justify-end mt-6 space-x-4">
                     <button
                         onClick={handleGenerate}
-                        className="px-6 py-2 bg-gradient-to-r from-emerald-400 to-cyan-400 text-white font-bold rounded-md hover:from-emerald-500 hover:to-cyan-500 transition duration-300"
+                        className="bg-[#007bff] hover:bg-[#0056b3] text-white font-bold py-2 px-4"
                     >
                         Save
                     </button>
                     <button
                         onClick={openBillingModal}
-                        className="px-6 py-2 bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold rounded-md hover:from-purple-500 hover:to-pink-500 transition duration-300"
+                        className="bg-[#6c757d] hover:bg-[#545b62] text-white font-bold py-2 px-4"
                     >
                         Billing
                     </button>
                 </div>
-                <div className='mt-4 flex justify-center'>
-                    {selectedSerials.length > 0 && downloadLink}
-                </div>
             </div>
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <table className="w-full border-collapse">
-                    <thead>
-                        <tr className="bg-gray-200">
-                            {/* <th className="px-4 py-2 text-left">Select</th> */}
-                            <th className="px-4 py-2 text-left">Ticket Name</th>
-                            <th className="px-4 py-2 text-left">Start Serial</th>
-                            <th className="px-4 py-2 text-left">End Serial</th>
-                            <th className="px-4 py-2 text-left">Count</th>
-                            <th className="px-4 py-2 text-left">Draw Date</th>
-                            <th className="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {Object.entries(ticketSub).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
-                            <tr key={key} className="border-t border-gray-200 hover:bg-gray-50">
-                                <td className="px-4 py-2">{ticketname}</td>
-                                <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
-                                    {start}
-                                    {showDropdown[key] && (
-                                        <div ref={el => dropdownRefs.current[key] = el} className="absolute bg-white border border-gray-300 rounded-md mt-2 overflow-y-auto max-h-48 z-10">
-                                            {serials.map(serial => (
-                                                <div key={serial} className="px-4 py-2 hover:bg-gray-100">
-                                                    {serial}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-4 py-2 cursor-pointer" onClick={() => toggleDropdown(key)}>
-                                    {end}
-                                </td>
-                                <td className="px-4 py-2">{count}</td>
-                                <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
-                                <td className="px-4 py-2">
-                                    <button
-                                        onClick={() => handleUpdateTicket(key)}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm mr-2"
-                                    >
-                                        Update
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteTicket(identifier)}
-                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-sm"
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
+            <div className="bg-white p-6 rounded-md shadow-md mt-8">
+                <h2 className="text-xl font-bold mb-4">Tickets</h2>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-[#e9ecef]">
+                                <th className="px-4 py-2 text-left">Ticket Name</th>
+                                <th className="px-4 py-2 text-left">Start Serial</th>
+                                <th className="px-4 py-2 text-left">End Serial</th>
+                                <th className="px-4 py-2 text-left">Count</th>
+                                <th className="px-4 py-2 text-left">Draw Date</th>
+                                <th className="px-4 py-2 text-left">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {Object.entries(TicketsByPrefix()).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
+                                <tr key={key} className="border-t border-[#e9ecef] hover:bg-[#f8f9fa]">
+                                    <td className="px-4 py-2">{ticketname}</td>
+                                    <td className="px-4 py-2">{start}</td>
+                                    <td className="px-4 py-2">{end}</td>
+                                    <td className="px-4 py-2">{count}</td>
+                                    <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
+                                    <td className="px-4 py-2 flex items-center space-x-2">
+                                        <button
+                                            onClick={() => handleUpdateTicket(key)}
+                                            className="bg-[#007bff] hover:bg-[#0056b3] text-white font-bold py-1 px-2 rounded text-sm"
+                                        >
+                                            <FaEdit />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteTicket(identifier)}
+                                            className="bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-1 px-2 rounded text-sm"
+                                        >
+                                            <FaTrash />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <BillingModal isOpen={isBillingModalOpen} onClose={closeBillingModal} />
         </div>
     );
 };
 
-const InputField = React.forwardRef(({ label, type = "text", value, onChange, onEnterPress }, ref) => (
+const InputField = React.forwardRef(({ label, type = "text", value, onChange }, ref) => (
     <div className="mb-4">
         <label className="block mb-2 font-bold text-gray-700">{label}:</label>
         <input
             type={type}
             value={value}
             onChange={onChange}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    onEnterPress();
-                }
-            }}
             ref={ref}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007bff]"
         />
     </div>
 ));
