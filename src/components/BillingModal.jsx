@@ -4,6 +4,7 @@ import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
 import { openDB } from 'idb';
+import { FaSearch, FaCalendarAlt, FaTrash } from 'react-icons/fa';
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -18,7 +19,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [modalIsOpen, setModalIsOpen] = useState(false);
     const [currentDateTime, setCurrentDateTime] = useState(new Date());
-    const [ticketprice] = useState([33.36, 42.50])
+    const [ticketprice] = useState([33.36, 42.50, 33.10, 42.10])
     const [selectedPrice, setSelectedPrice] = useState(Number(ticketprice[0]));
     const [newprice, setNewprice] = useState(false)
     const [pwtPrice, setpwtPrice] = useState(0)
@@ -89,7 +90,17 @@ const BillingModal = ({ isOpen, onClose }) => {
                 const ticketsFromDB = await getAllTicketsFromDB();
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
                 setAllTickets(unsoldTickets);
-                const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => new Date(ticket.drawDate).toISOString().split('T')[0]))];
+                const uniqueDrawDates = [
+                    ...new Set(
+                        unsoldTickets.map(ticket => {
+                            const date = new Date(ticket.drawDate);
+                            const day = String(date.getDate()).padStart(2, '0');
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const year = date.getFullYear();
+                            return `${day}/${month}/${year}`;
+                        })
+                    ),
+                ];
                 setDrawDates(uniqueDrawDates);
             }
             fetchTickets();
@@ -131,7 +142,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
             const mainKey = `${startSerial}-${endSerial} (${startNumber}-${endNumber}) - ${ticketname}`;
             if (!acc[mainKey]) {
-                acc[mainKey] = { info: { serialNumber, drawDate: new Date(drawDate).toLocaleDateString(), totalTickets: 0 }, subGroups: {} };
+                acc[mainKey] = { info: { serialNumber, drawDate:ticket.drawDate, totalTickets: 0 }, subGroups: {} };
             }
 
             const subKey = `${ticket.serial}-${startNumber} to ${ticket.serial}-${endNumber}`;
@@ -235,33 +246,42 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-        const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
-        const seriesKey = `${ticketname}-${drawDate}`;
-        const date = ticket.drawDate
-        const serialNum = ticket.serialNumber
+        const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
+        const seriesKey = `${ticketname}-${ticket.serialNumber}`;
+
+        const date = ticket.drawDate;
+        const serialNum = ticket.serialNumber;
+
         if (!acc[seriesKey]) {
+            const ticketsInSeries = Array.from(selectedTickets).filter(t =>
+                t.serialNumber === ticket.serialNumber &&
+                t.ticketname === ticket.ticketname
+            );
+
+            const numbers = ticketsInSeries.map(t => t.number);
+            const startNumber = Math.min(...numbers);
+            const endNumber = Math.max(...numbers);
+
             acc[seriesKey] = {
-                ticketname,
+                ticketname: ticketname.split('-')[0],
                 drawDate: new Date(date).toLocaleDateString(),
                 serialNum,
-                ranges: {}
+                ranges: {
+                    [`${startNumber}-${endNumber}`]: {
+                        startNumber: startNumber.toString(),
+                        endNumber: endNumber.toString(),
+                        series: {},
+                        serialNum,
+                        price: Number(selectedPrice)
+                    }
+                }
             };
         }
-
-        if (!acc[seriesKey].ranges[`${startNumber}-${endNumber}`]) {
-            acc[seriesKey].ranges[`${startNumber}-${endNumber}`] = {
-                startNumber,
-                endNumber,
-                series: {},
-                serialNum,
-                price: Number(selectedPrice)
-            };
+        const rangeKey = Object.keys(acc[seriesKey].ranges)[0];
+        if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
+            acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
         }
-
-        if (!acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial]) {
-            acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial] = 0;
-        }
-        acc[seriesKey].ranges[`${startNumber}-${endNumber}`].series[ticket.serial]++;
+        acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
 
         return acc;
     }, {});
@@ -353,15 +373,35 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     };
 
+    function formatDate(date) {
+        console.log(date)
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const formatedDate = `${day}/${month}/${year}`
+        return formatedDate
+    }
+
     return (
         isOpen && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                <div className="bg-white p-6 rounded-lg max-w-4xl w-full flex">
+                <div className="bg-white p-6 max-w-4xl w-full flex">
                     <div className="w-1/2 p-4">
                         <h2 className="text-lg font-bold mb-4">Billing Information</h2>
                         <div className='flex flex-row gap-3'>
-                            <div className="mb-4">
-                                <input type="text" placeholder="Search Ticket Serial..." value={searchQuery} onChange={handleSearchInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
+                            <div className="mb-4 flex-1">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search Ticket Serial..."
+                                        value={searchQuery}
+                                        onChange={handleSearchInputChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md pr-8"
+                                    />
+                                    <div className="absolute top-1/2 transform -translate-y-1/2 right-2 text-gray-400 cursor-pointer">
+                                        <FaSearch />
+                                    </div>
+                                </div>
                             </div>
                             <div className="mb-4">
                                 <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300 rounded-md">
@@ -372,7 +412,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 </select>
                             </div>
                             <div className='mt-1'>
-                                <button className='bg-red-500 p-1 rounded-md text-white hover:bg-red-600' onClick={handleReset}>Reset</button>
+                                <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4 rounded' onClick={handleReset}><FaTrash /></button>
                             </div>
                         </div>
                         <div className="mb-4">
@@ -412,7 +452,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             />
                         </div>
                         <div className='flex flex-row gap-3'>
-                            <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Close</button>
+                            <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
                             {selectedTickets.size > 0 && buyerName.trim() !== '' &&
                                 <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">show bill slip</button>}
                         </div>
@@ -446,7 +486,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                 <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
                                                     {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
                                                     {groupData && groupData.info ?
-                                                        `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${groupData.info.drawDate}]`
+                                                        `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${formatDate(groupData.info.drawDate)}]`
                                                         : '(No info available)'}
                                                 </span>
                                             </div>
