@@ -139,6 +139,14 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
         }, 0);
     };
 
+    function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const formatedDate = `${day}/${month}/${year}`
+        return formatedDate
+    }
+
     return (
         <div ref={contentRef} style={styles.page}>
             <div style={styles.header}>Devan Lottery Agency</div>
@@ -146,7 +154,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
 
             <div className='flex justify-between'>
                 <div style={styles.infoColumn}>
-                    <p><span style={styles.boldText}>Date:</span> {currentDateTime.toLocaleDateString()}</p>
+                    <p><span style={styles.boldText}>Date:</span> {formatDate(currentDateTime)}</p>
                     <p><span style={styles.boldText}></span> {out}</p>
                 </div>
                 <div className='item-end'>
@@ -189,7 +197,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                                     {group.ranges.map((range, rangeIndex) => (
                                         <tr key={rangeIndex}>
                                             <td style={styles.tableCell}></td>
-                                            <td style={styles.tableCell}>{`${range.startNumber.padStart(6, '0')}-${range.endNumber.padStart(6, '0')}`}</td>
+                                            <td style={styles.tableCell}>{`${range.startNumber}-${range.endNumber}`}</td>
                                             <td style={styles.tableCell}>{range.count.toString().padStart(3, ' ')}</td>
                                             <td style={styles.tableCell}>{range.price.toFixed(2)}</td>
                                             <td style={styles.tableCell}>{(range.count * range.price).toFixed(2).padStart(9, ' ')}</td>
