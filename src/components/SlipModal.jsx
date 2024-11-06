@@ -128,6 +128,15 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                 return groupAcc + range.count * range.price;
             }, 0);
         }, 0);
+        return total
+    };
+
+    const calculatePayable = (item) => {
+        const total = item.groups.reduce((acc, group) => {
+            return acc + group.ranges.reduce((groupAcc, range) => {
+                return groupAcc + range.count * range.price;
+            }, 0);
+        }, 0);
         return pwt ? total - pwt : total;
     };
 
@@ -223,7 +232,9 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                 </tbody>
             </table>
             <div className='item-start'>
-                <p><span>PWT:</span> ₹ {pwt}</p>
+                <p className='text-black text-sm'>PWT : ₹<span className='text-black text-sm font-semibold'>{pwt}</span></p>
+                <p className='text-black text-sm'>Total Payable Amount : ₹<span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
+                <p className='text-black text-sm mt-2'>DC shall be claimed within 30 days</p>
             </div>
         </div>
     );
