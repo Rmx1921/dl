@@ -58,11 +58,15 @@ const LotteryTicketGenerator = () => {
 
     const inputRefs = useRef([]);
 
-    const handleEnterPress = (index) => {
-        if (index < inputRefs.current.length - 1) {
-            inputRefs.current[index + 1].focus();
-        }
-    };
+    // const handleEnterPress = (index) => {
+    //     if (index < inputRefs.current.length - 1) {
+    //         inputRefs.current[index + 1].focus();
+    //     }
+    // };
+
+    function formatDate(date) {
+        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    }
 
     const openBillingModal = () => {
         setIsBillingModalOpen(true);
@@ -261,14 +265,14 @@ const LotteryTicketGenerator = () => {
                                     <td className="px-4 py-2">{start}</td>
                                     <td className="px-4 py-2">{end}</td>
                                     <td className="px-4 py-2">{count}</td>
-                                    <td className="px-4 py-2">{new Date(drawDate).toLocaleDateString()}</td>
+                                    <td className="px-4 py-2">{formatDate(drawDate)}</td>
                                     <td className="px-4 py-2 flex items-center space-x-2">
-                                        <button
+                                        {/* <button
                                             onClick={() => handleUpdateTicket(key)}
                                             className="bg-[#007bff] hover:bg-[#0056b3] text-white font-bold py-1 px-2 rounded text-sm"
                                         >
                                             <FaEdit />
-                                        </button>
+                                        </button> */}
                                         <button
                                             onClick={() => handleDeleteTicket(identifier)}
                                             className="bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-1 px-2 rounded text-sm"
