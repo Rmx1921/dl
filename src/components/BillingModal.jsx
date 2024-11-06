@@ -84,23 +84,18 @@ const BillingModal = ({ isOpen, onClose }) => {
         fetchbillno()
     },[])
 
+    function formatDate(date) {
+        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    }
+
+
     useEffect(() => {
         if (isOpen) {
             async function fetchTickets() {
                 const ticketsFromDB = await getAllTicketsFromDB();
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
                 setAllTickets(unsoldTickets);
-                const uniqueDrawDates = [
-                    ...new Set(
-                        unsoldTickets.map(ticket => {
-                            const date = new Date(ticket.drawDate);
-                            const day = String(date.getDate()).padStart(2, '0');
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}/${month}/${year}`;
-                        })
-                    ),
-                ];
+                const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => formatDate(ticket.drawDate)))];
                 setDrawDates(uniqueDrawDates);
             }
             fetchTickets();
@@ -134,7 +129,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
             const numberMatch = numberPart ? ticket.number.toString().startsWith(numberPart) : true;
             const otherFieldsMatch = ticket.id.toLowerCase().includes(queryLowerCase) || ticket.ticketname.toLowerCase().includes(queryLowerCase) || ticket.serialNumber.toLowerCase().includes(queryLowerCase);
-            const drawDateMatch = drawDate ? new Date(ticket.drawDate).toISOString().split('T')[0] === drawDate : true;
+            const drawDateMatch = drawDate ? formatDate(ticket.drawDate) === drawDate : true;
             return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
 
@@ -245,98 +240,158 @@ const BillingModal = ({ isOpen, onClose }) => {
         }, []);
     };
 
-    const selectedTicketSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-        const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
-        const seriesKey = `${ticketname}-${ticket.serialNumber}`;
+    const createTicketSummary = (selectedTickets, selectedPrice) => {
+        return Array.from(selectedTickets).reduce((acc, ticket) => {
+            const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
+            const seriesKey = `${ticketname}-${ticket.serialNumber}`;
+            const date = ticket.drawDate;
+            const serialNum = ticket.serialNumber;
 
-        const date = ticket.drawDate;
-        const serialNum = ticket.serialNumber;
+            if (!acc[seriesKey]) {
+                acc[seriesKey] = {
+                    ticketname: ticketname.split('-')[0],
+                    drawDate: new Date(date).toLocaleDateString(),
+                    serialNum,
+                    ranges: {}
+                };
+            }
 
-        if (!acc[seriesKey]) {
             const ticketsInSeries = Array.from(selectedTickets).filter(t =>
                 t.serialNumber === ticket.serialNumber &&
                 t.ticketname === ticket.ticketname
             );
 
             const numbers = ticketsInSeries.map(t => t.number);
-            const startNumber = Math.min(...numbers);
-            const endNumber = Math.max(...numbers);
+            const findContinuousRanges = (nums) => {
+                if (nums.length === 0) return [];
 
-            acc[seriesKey] = {
-                ticketname: ticketname.split('-')[0],
-                drawDate: new Date(date).toLocaleDateString(),
-                serialNum,
-                ranges: {
-                    [`${startNumber}-${endNumber}`]: {
-                        startNumber: startNumber.toString(),
-                        endNumber: endNumber.toString(),
+                const sortedNums = [...nums].sort((a, b) => a - b);
+                const ranges = [];
+                let start = sortedNums[0];
+                let prev = start;
+
+                for (let i = 1; i <= sortedNums.length; i++) {
+                    if (i === sortedNums.length || sortedNums[i] > prev + 1) {
+                        ranges.push({
+                            start: start,
+                            end: prev
+                        });
+                        if (i < sortedNums.length) {
+                            start = sortedNums[i];
+                            prev = start;
+                        }
+                    } else {
+                        prev = sortedNums[i];
+                    }
+                }
+                return ranges;
+            };
+
+            const continuousRanges = findContinuousRanges(numbers);
+            continuousRanges.forEach(range => {
+                const rangeKey = `${range.start}-${range.end}`;
+                if (!acc[seriesKey].ranges[rangeKey]) {
+                    acc[seriesKey].ranges[rangeKey] = {
+                        startNumber: range.start.toString(),
+                        endNumber: range.end.toString(),
                         series: {},
                         serialNum,
                         price: Number(selectedPrice)
-                    }
-                }
-            };
-        }
-        const rangeKey = Object.keys(acc[seriesKey].ranges)[0];
-        if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
-            acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
-        }
-        acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
-
-        return acc;
-    }, {});
-
-    const sortedSummary = Object.entries(selectedTicketSummary).map(([key, value]) => {
-        const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
-            const seriesList = Object.keys(rangeData.series).sort();
-            const seriesGroups = seriesList.reduce((groups, serial) => {
-                if (groups.length === 0 || serial.charCodeAt(0) - groups[groups.length - 1].end.charCodeAt(0) > 1) {
-                    groups.push({ start: serial, end: serial, serials: [serial] });
-                } else {
-                    groups[groups.length - 1].end = serial;
-                    groups[groups.length - 1].serials.push(serial);
-                }
-                return groups;
-            }, []);
-
-            seriesGroups.forEach(group => {
-                const groupKey = `${group.start}-${group.end}`;
-                if (!acc[groupKey]) {
-                    acc[groupKey] = {
-                        series: group.serials.join(','),
-                        ranges: []
                     };
                 }
-                acc[groupKey].ranges.push({
-                    startNumber: rangeData.startNumber,
-                    endNumber: rangeData.endNumber,
-                    count: group.serials.reduce((sum, serial) => sum + rangeData.series[serial], 0),
-                    price: rangeData.price
-                });
+
+                if (ticket.number >= range.start && ticket.number <= range.end) {
+                    if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
+                        acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
+                    }
+                    acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
+                }
             });
 
             return acc;
         }, {});
+    };
 
-        return {
-            ticketname: value.ticketname,
-            drawDate: value.drawDate,
-            serialNum: value.serialNum,
-            groups: Object.values(rangeGroups)
-        };
-    });
-    
-    const finalSortedSummary = sortedSummary
-        .sort((a, b) => a.groups[0].series.localeCompare(b.groups[0].series))
-        .map(item => ({
-            ...item,
-            serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
-            groups: item.groups.map(group => ({
-                ...group,
-                ranges: group.ranges.sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
-                totalAmount: group.ranges.reduce((sum, range) => sum + range.count * range.price, 0)
-            }))
-        }));
+    const processSummaryIntoGroups = (ticketSummary) => {
+        return Object.entries(ticketSummary).map(([key, value]) => {
+            const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
+                const seriesList = Object.keys(rangeData.series).sort();
+                const seriesGroups = seriesList.reduce((groups, serial) => {
+                    const currentGroup = groups[groups.length - 1];
+
+                    if (groups.length === 0 ||
+                        serial.charCodeAt(0) - currentGroup.serials[currentGroup.serials.length - 1].charCodeAt(0) > 1) {
+                        groups.push({
+                            start: serial,
+                            end: serial,
+                            serials: [serial]
+                        });
+                    } else {
+                        currentGroup.end = serial;
+                        currentGroup.serials.push(serial);
+                    }
+                    return groups;
+                }, []);
+
+                seriesGroups.forEach(group => {
+                    const groupKey = `${group.start}-${group.end}`;
+                    if (!acc[groupKey]) {
+                        acc[groupKey] = {
+                            series: group.serials.join(','),
+                            ranges: []
+                        };
+                    }
+                    const count = group.serials.reduce((sum, serial) =>
+                        sum + (rangeData.series[serial] || 0), 0);
+
+                    acc[groupKey].ranges.push({
+                        startNumber: rangeData.startNumber,
+                        endNumber: rangeData.endNumber,
+                        count,
+                        price: rangeData.price
+                    });
+                });
+
+                return acc;
+            }, {});
+
+            return {
+                ticketname: value.ticketname,
+                drawDate: value.drawDate,
+                serialNum: value.serialNum,
+                groups: Object.values(rangeGroups)
+            };
+        });
+    };
+
+    const createFinalSummary = (sortedSummary) => {
+        return sortedSummary
+            .sort((a, b) => {
+                const ticketCompare = a.ticketname.localeCompare(b.ticketname);
+                if (ticketCompare !== 0) return ticketCompare;
+
+                return a.groups[0]?.series.localeCompare(b.groups[0]?.series || '') || 0;
+            })
+            .map(item => ({
+                ...item,
+                serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
+                groups: item.groups.map(group => ({
+                    ...group,
+                    ranges: group.ranges
+                        .sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
+                    totalAmount: group.ranges.reduce((sum, range) =>
+                        sum + (range.count * range.price), 0)
+                }))
+            }));
+    };
+
+    const generateSummary = (selectedTickets, selectedPrice) => {
+        const summary = createTicketSummary(selectedTickets, selectedPrice);
+        const groupedSummary = processSummaryIntoGroups(summary);
+        return createFinalSummary(groupedSummary);
+    };
+
+    const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
 
     const handlePriceChange = (e) => {
         setSelectedPrice(Number(e.target.value));
@@ -373,15 +428,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     };
 
-    function formatDate(date) {
-        console.log(date)
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const formatedDate = `${day}/${month}/${year}`
-        return formatedDate
-    }
-
     return (
         isOpen && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -396,7 +442,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                         placeholder="Search Ticket Serial..."
                                         value={searchQuery}
                                         onChange={handleSearchInputChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-md pr-8"
+                                        className="w-full px-4 py-2 border border-gray-300 pr-8"
                                     />
                                     <div className="absolute top-1/2 transform -translate-y-1/2 right-2 text-gray-400 cursor-pointer">
                                         <FaSearch />
@@ -404,7 +450,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <div className="mb-4">
-                                <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300 rounded-md">
+                                <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300">
                                     <option value="">Draw Date</option>
                                     {drawDates.map((date, index) => (
                                         <option key={index} value={date}>{date}</option>
@@ -412,11 +458,11 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 </select>
                             </div>
                             <div className='mt-1'>
-                                <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4 rounded' onClick={handleReset}><FaTrash /></button>
+                                <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
                             </div>
                         </div>
                         <div className="mb-4">
-                            <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300 rounded-md" />
+                            <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300" />
                         </div>
                         <div className="flex gap-2 mb-4">
                             {newprice ? (
@@ -424,13 +470,13 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     type='Number'
                                     placeholder='Enter Ticket Price'
                                     onChange={(e) => handlesetprice(e)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             ) : (
                                 <select
                                     value={selectedPrice}
                                     onChange={handlePriceChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     {ticketprice.map((price, index) => (
                                         <option key={index} value={price}>
@@ -439,7 +485,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     ))}
                                 </select>
                             )}
-                            <button onClick={handleNewprice} className="px-4 py-2 text-black border font-bold rounded-md hover:bg-blue-200 hover:text-white">
+                            <button onClick={handleNewprice} className="px-4 py-2 text-black border font-bold hover:bg-blue-200 hover:text-white">
                                 +
                             </button>
                         </div>
@@ -448,13 +494,13 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 type='Number'
                                 placeholder='Price winning ticket'
                                 onChange={(e) => handlepwtprice(e)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                         <div className='flex flex-row gap-3'>
                             <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
                             {selectedTickets.size > 0 && buyerName.trim() !== '' &&
-                                <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">show bill slip</button>}
+                                <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">show bill slip</button>}
                         </div>
                         <div>
                             <SlipModal
@@ -475,7 +521,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             {displayedTickets.length > 0 ? (
                                 <div>
                                     {displayedTickets.map(([mainKey, groupData]) => (
-                                        <div key={mainKey} className="my-2 border border-gray-200 p-2 rounded-md">
+                                        <div key={mainKey} className="my-2 border border-gray-200 p-2">
                                             <div className="flex items-center cursor-pointer">
                                                 <input
                                                     type="checkbox"
