@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getAllTicketsFromDB } from '../components/helpers/indexdb';
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
 import { openDB } from 'idb';
-import { FaSearch, FaCalendarAlt, FaTrash } from 'react-icons/fa';
+import { FaSearch, FaCalendarAlt, FaTrash} from 'react-icons/fa';
+import { TiTickOutline } from 'react-icons/ti';
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,6 +26,108 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [pwtPrice, setpwtPrice] = useState(0)
     const [lastbillno,setBillno]=useState(0)
     const [tempBillNo, setTempBillNo] = useState(null);
+    const [start,setStart]=useState('')
+    const [end, setEnd]=useState('')
+    const [prefixFilter, setPrefixFilter]=useState([])
+    const [filterTicketData,setFilterTicketData]=useState([])
+    const [newSelected,setNewSelected]=useState(new Set())
+
+    function filterTicketsByRange(tickets, startSuffix, endSuffix) {
+        if (startSuffix !== null && endSuffix !== null) {
+            const filteredTickets = [];
+
+            for (const ticket of tickets) {
+                const idSuffix = parseInt(ticket.id.slice(-2), 10);
+                if (idSuffix >= startSuffix && idSuffix <= endSuffix) {
+                    filteredTickets.push(ticket);
+                }
+            }
+
+            return filteredTickets;
+        } else {
+            return null;
+        }
+    }
+
+    const handleStart = (event)=>{
+        setStart(event.target.value)
+    }
+
+    const handleEnd = (event) => {
+        setEnd(event.target.value);
+    };
+
+    useEffect(()=>{
+        const out = filterTicketsByRange(selectedTickets, start, end)
+        setPrefixFilter(out)
+    }, [start, end, selectedDrawDate])
+    
+    const groupedTicketData = useMemo(() => {
+        if (!prefixFilter) return [];
+
+        const filteredGroupedTickets = prefixFilter.reduce((acc, ticket) => {
+            const [startSerial, endSerial, , , ticketname, serialNumber, drawDate] =
+                ticket.identifier.split('-');
+            const startNumber = prefixFilter[0].number;
+            const endNumber = prefixFilter[prefixFilter.length - 1].number;
+            const mainKey = `${startSerial}-${endSerial} (${startNumber}-${endNumber}) - ${ticketname}`;
+
+            if (!acc[mainKey]) {
+                acc[mainKey] = {
+                    info: {
+                        serialNumber,
+                        drawDate: ticket.drawDate,
+                        totalTickets: 0
+                    },
+                    subGroups: {}
+                };
+            }
+
+            const subKey = `${ticket.serial}-${startNumber} to ${ticket.serial}-${endNumber}`;
+            if (!acc[mainKey].subGroups[subKey]) {
+                acc[mainKey].subGroups[subKey] = [];
+            }
+
+            acc[mainKey].subGroups[subKey].push(ticket);
+            acc[mainKey].info.totalTickets += 1;
+            return acc;
+        }, {});
+
+        return Object.entries(filteredGroupedTickets);
+    }, [prefixFilter]);
+
+    useEffect(() => {
+        setFilterTicketData(groupedTicketData);
+    }, [groupedTicketData]);
+
+    const getSelectedTickets = (groupedTicketData) => {
+        let addToSet = new Set();
+        groupedTicketData.forEach(([, { subGroups }]) => {
+            Object.values(subGroups).forEach((tickets) => {
+                tickets.forEach((ticket) => {
+                    addToSet.add(ticket);
+                });
+            });
+        });
+        return addToSet;
+    };
+    
+    useEffect(() => {
+        setNewSelected(getSelectedTickets(groupedTicketData));
+    }, [groupedTicketData]);
+
+    const resetFilters = useCallback(() => {
+        setStart('');
+        setEnd('');
+        setPrefixFilter([]);
+    }, []);
+
+    const handleFilter = useCallback(() => {
+        if(start && end){
+            setSelectedTickets(new Set(Array.from(newSelected)));
+            resetFilters()
+        }
+    }, [start,end,newSelected]);
 
     async function updateSelectedTicketsStatus(selectedTickets) {
         try {
@@ -189,44 +292,71 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const handleSelectTicket = (ticket, groupKey = null) => {
-        setSelectedTickets(prevSelected => {
-            const newSelected = new Set(prevSelected);
-            if (groupKey) {
-                const [mainKey, subKey, groupIndex] = groupKey.split('|');
-                const mainGroup = searchResults.find(([key]) => key === mainKey);
-                if (mainGroup) {
-                    let ticketsToToggle;
-                    if (groupIndex !== undefined) {
-                        ticketsToToggle = groupTicketsInFives(mainGroup[1].subGroups[subKey])[parseInt(groupIndex)];
-                    } else if (subKey) {
-                        ticketsToToggle = mainGroup[1].subGroups[subKey];
-                    } else {
-                        ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
-                    }
-                    const allSelected = ticketsToToggle.every(t => newSelected.has(t));
-                    ticketsToToggle.forEach(t => {
-                        if (allSelected) {
-                            newSelected.delete(t);
+        if (newSelected.size < 1){
+            setSelectedTickets(prevSelected => {
+                const newSelected = new Set(prevSelected);
+                if (groupKey) {
+                    const [mainKey, subKey, groupIndex] = groupKey.split('|');
+                    const mainGroup = searchResults.find(([key]) => key === mainKey);
+                    if (mainGroup) {
+                        let ticketsToToggle;
+                        if (groupIndex !== undefined) {
+                            ticketsToToggle = groupTicketsInFives(mainGroup[1].subGroups[subKey])[parseInt(groupIndex)];
+                        } else if (subKey) {
+                            ticketsToToggle = mainGroup[1].subGroups[subKey];
                         } else {
-                            newSelected.add(t);
+                            ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
                         }
-                    });
+                        const allSelected = ticketsToToggle.every(t => newSelected.has(t));
+                        ticketsToToggle.forEach(t => {
+                            if (allSelected) {
+                                newSelected.delete(t);
+                            } else {
+                                newSelected.add(t);
+                            }
+                        });
+                    }
+                } else if (ticket) {
+                    if (newSelected.has(ticket)) {
+                        newSelected.delete(ticket);
+                    } else {
+                        newSelected.add(ticket);
+                    }
                 }
-            } else if (ticket) {
-                if (newSelected.has(ticket)) {
-                    newSelected.delete(ticket);
-                } else {
-                    newSelected.add(ticket);
+                return newSelected;
+            });
+        }else{
+            setNewSelected(prevSelected => {
+                const newSelected = new Set(prevSelected);
+                if (groupKey) {
+                    const [mainKey, subKey, groupIndex] = groupKey.split('|');
+                    const mainGroup = filterTicketData.find(([key]) => key === mainKey);
+                    if (mainGroup) {
+                        let ticketsToToggle;
+                        if (subKey) { 
+                            ticketsToToggle = mainGroup[1].subGroups[subKey];
+                        }
+                        const allSelected = ticketsToToggle.every(t => newSelected.has(t));
+                        ticketsToToggle.forEach(t => {
+                            if (allSelected) {
+                                newSelected.delete(t);
+                            } else {
+                                newSelected.add(t);
+                            }
+                        });
+                    }
                 }
-            }
-            return newSelected;
-        });
+                return newSelected;
+            });
+        }
     };
 
     const handleReset = () => {
         setSelectedTickets(new Set());
         setSelectedDrawDate('')
         setSearchQuery('');
+        setStart(null);
+        setEnd(null);
     }
 
     const groupTicketsInFives = (tickets) => {
@@ -461,6 +591,19 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
                             </div>
                         </div>
+                        {selectedTickets.size > 0 && selectedDrawDate !== '' && (
+                            <div className='flex flex-row gap-3'>
+                                <div className="mb-4">
+                                    <input type="text" placeholder="Start number" value={start} onChange={handleStart} className="w-full px-4 py-2 border border-gray-300" />
+                                </div>
+                                <div className="mb-4">
+                                    <input type="text" placeholder="End number" value={end} onChange={handleEnd} className="w-full px-4 py-2 border border-gray-300" />
+                                </div>
+                                <div className=''>
+                                    <button className='bg-[#1a923e] hover:bg-[#1a923e] text-white font-bold py-3 px-3' onClick={handleFilter}><TiTickOutline /></button>
+                                </div>
+                            </div>
+                        )}
                         <div className="mb-4">
                             <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300" />
                         </div>
@@ -518,7 +661,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                     <div className="w-1/2 p-4 border-l border-gray-200">
                         <h2 className="text-lg font-bold mb-4">Search Results</h2>
                         <div className="max-h-96 overflow-y-auto">
-                            {displayedTickets.length > 0 ? (
+                            {displayedTickets.length > 0 && newSelected.size< 1 ? (
                                 <div>
                                     {displayedTickets.map(([mainKey, groupData]) => (
                                         <div key={mainKey} className="my-2 border border-gray-200 p-2">
@@ -597,7 +740,49 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-gray-500 text-sm">Enter ticket serial, number, draw date, or ID</p>
+                                    prefixFilter && prefixFilter.length > 1 ? (
+                                    <div>
+                                            {filterTicketData.map(([mainKey, groupData]) => (
+                                                <div key={mainKey} className="my-2 border border-gray-200 p-2">
+                                                    <div className="flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Object.values(groupData.subGroups).flat().every(t => newSelected.has(t))}
+                                                            onChange={() => handleSelectTicket(null, mainKey)}
+                                                            className="mr-2"
+                                                        />
+                                                        <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
+                                                            {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
+                                                            {groupData && groupData.info ?
+                                                                `(${groupData.info.totalTickets} tickets) [Serial: ${groupData.info.serialNumber}, Draw Date: ${formatDate(groupData.info.drawDate)}]`
+                                                                : '(No info available)'}
+                                                        </span>
+                                                    </div>
+                                                    {expandedGroups.has(mainKey) && (
+                                                        <div className="ml-6 mt-2">
+                                                            {Object.entries(groupData.subGroups).map(([subKey, tickets], groupIndex) => (
+                                                                <div key={subKey} className="my-1">
+                                                                    <div className="flex items-center cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={tickets.every(t => newSelected.has(t))}
+                                                                            onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
+                                                                            className="mr-2"
+                                                                        />
+                                                                        <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}-${groupIndex}`)} className="flex-grow">
+                                                                            {subKey}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm">Enter ticket serial, number, draw date, or ID</p>
+                                )
                             )}
                         </div>
                     </div>
