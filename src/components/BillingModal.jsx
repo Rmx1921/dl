@@ -31,6 +31,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [prefixFilter, setPrefixFilter]=useState([])
     const [filterTicketData,setFilterTicketData]=useState([])
     const [newSelected,setNewSelected]=useState(new Set())
+    const [newSelected1, setNewSelected1] = useState(new Set())
 
     function filterTicketsByRange(tickets, startSuffix, endSuffix) {
         if (startSuffix !== null && endSuffix !== null) {
@@ -116,18 +117,27 @@ const BillingModal = ({ isOpen, onClose }) => {
         setNewSelected(getSelectedTickets(groupedTicketData));
     }, [groupedTicketData]);
 
-    const resetFilters = useCallback(() => {
-        setStart('');
-        setEnd('');
-        setPrefixFilter([]);
-    }, []);
+    const resetFilters =() => {
+        if (newSelected.size > 0) {
+            setNewSelected1(prevSelected => {
+                const updatedSet = new Set(prevSelected); 
+                newSelected.forEach(item => updatedSet.add(item));
+                return updatedSet;
+            });
+            setStart('');
+            setEnd('');
+            setPrefixFilter([]);
+        }else{
+            return
+        }
+    };
 
-    const handleFilter = useCallback(() => {
-        if(start && end){
-            setSelectedTickets(new Set(Array.from(newSelected)));
+    const handleFilter = () => {
+        if (start && end) {
+            setSelectedTickets(new Set())
             resetFilters()
         }
-    }, [start,end,newSelected]);
+    };
 
     async function updateSelectedTicketsStatus(selectedTickets) {
         try {
@@ -353,6 +363,8 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     const handleReset = () => {
         setSelectedTickets(new Set());
+        setNewSelected(new Set())
+        setNewSelected1(new Set())
         setSelectedDrawDate('')
         setSearchQuery('');
         setStart(null);
@@ -380,7 +392,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             if (!acc[seriesKey]) {
                 acc[seriesKey] = {
                     ticketname: ticketname.split('-')[0],
-                    drawDate: new Date(date).toLocaleDateString(),
+                    drawDate: formatDate(date),
                     serialNum,
                     ranges: {}
                 };
@@ -541,6 +553,13 @@ const BillingModal = ({ isOpen, onClose }) => {
     }
 
     const handleOpenmodal = () => {
+        if(newSelected1.size>0){
+            setSelectedTickets(prevSelected => {
+                const updatedSet = new Set(prevSelected);
+                newSelected1.forEach(item => updatedSet.add(item));
+                return updatedSet;
+            });
+        }
         const newBillNo = lastbillno == null ? 1 : lastbillno + 1;
         setTempBillNo(newBillNo);
         setModalIsOpen(true);
@@ -561,7 +580,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     return (
         isOpen && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                <div className="bg-white p-6 max-w-4xl w-full flex">
+                <div className="bg-white p-6 max-w-5xl w-full flex">
                     <div className="w-1/2 p-4">
                         <h2 className="text-lg font-bold mb-4">Billing Information</h2>
                         <div className='flex flex-row gap-3'>
@@ -591,7 +610,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
                             </div>
                         </div>
-                        {selectedTickets.size > 0 && selectedDrawDate !== '' && (
+                        {selectedTickets.size > 0 && selectedDrawDate !== ''  && (
                             <div className='flex flex-row gap-3'>
                                 <div className="mb-4">
                                     <input type="text" placeholder="Start number" value={start} onChange={handleStart} className="w-full px-4 py-2 border border-gray-300" />
@@ -642,7 +661,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                         </div>
                         <div className='flex flex-row gap-3'>
                             <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
-                            {selectedTickets.size > 0 && buyerName.trim() !== '' &&
+                            {(selectedTickets.size > 0 || newSelected1.size> 0) && buyerName.trim() !== '' &&
                                 <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">show bill slip</button>}
                         </div>
                         <div>
