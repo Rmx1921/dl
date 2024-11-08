@@ -6,19 +6,37 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from 'react-router-dom';
 import { findBills, getBills,saveBills} from './helpers/billsdb';
 import BillEditModal from './BillEditModal';
+import SlipModal from './SlipModal'
 
 
 const BillDetails = () => {
     const navigate = useNavigate();
-    const handleNav = () => {
-        navigate('/');
-    };
 
     const [searchDate, setSearchDate] = useState(null);
     const [billsData, setBillsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalIsOpen, setModalIsOpen] = useState(false);
     const [selectedBill, setSelectedBill] = useState(null);
+    const [selectedTickets,setSelectedTickets]= useState(new Set())
+    const [buyerName, setBuyerName] = useState('');
+    const [tempBillNo, setTempBillNo] = useState(null);
+    const [pwtPrice, setpwtPrice] = useState(0)
+    const [selectedPrice, setSelectedPrice] = useState(0);
+    
+    const handlePrinting = (bill)=>{
+        console.log(bill)
+        setSelectedTickets(new Set(bill.tickets))
+        setBuyerName(bill.name);
+        setTempBillNo(bill.billno)
+        setSelectedPrice(bill.ticketPrice)
+        setpwtPrice(bill.pwt)
+        setModalIsOpen(true)
+    }
+
+    const handlePrintSuccess = async () => {
+            setModalIsOpen(false)
+    };
 
     const handleEdit = (bill) => {
         setSelectedBill(bill);
@@ -87,12 +105,23 @@ const BillDetails = () => {
                 Cell: ({ row }) => (
                     <button
                         onClick={() => handleEdit(row.original)}
-                        className="px-4 py-2 bg-green-500 text-white rounded-md"
+                        className="px-4 py-2 bg-green-500 text-white"
                     >
                         Edit
                     </button>
                 ),
             },
+            {
+                Header: 'Print',
+                Cell: ({ row }) => (
+                    <button
+                        onClick={() => handlePrinting(row.original)}
+                        className="px-4 py-2 bg-blue-400 text-white"
+                    >
+                        Print
+                    </button>
+                ),
+            }
         ],
         []
     );
@@ -146,11 +175,170 @@ const BillDetails = () => {
         }
     };
 
+    const createTicketSummary = (selectedTickets, selectedPrice) => {
+        return Array.from(selectedTickets).reduce((acc, ticket) => {
+            const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
+            const seriesKey = `${ticketname}-${ticket.serialNumber}`;
+            const date = ticket.drawDate;
+            const serialNum = ticket.serialNumber;
+
+            if (!acc[seriesKey]) {
+                acc[seriesKey] = {
+                    ticketname: ticketname.split('-')[0],
+                    drawDate: new Date(date).toLocaleDateString(),
+                    serialNum,
+                    ranges: {}
+                };
+            }
+
+            const ticketsInSeries = Array.from(selectedTickets).filter(t =>
+                t.serialNumber === ticket.serialNumber &&
+                t.ticketname === ticket.ticketname
+            );
+
+            const numbers = ticketsInSeries.map(t => t.number);
+            const findContinuousRanges = (nums) => {
+                if (nums.length === 0) return [];
+
+                const sortedNums = [...nums].sort((a, b) => a - b);
+                const ranges = [];
+                let start = sortedNums[0];
+                let prev = start;
+
+                for (let i = 1; i <= sortedNums.length; i++) {
+                    if (i === sortedNums.length || sortedNums[i] > prev + 1) {
+                        ranges.push({
+                            start: start,
+                            end: prev
+                        });
+                        if (i < sortedNums.length) {
+                            start = sortedNums[i];
+                            prev = start;
+                        }
+                    } else {
+                        prev = sortedNums[i];
+                    }
+                }
+                return ranges;
+            };
+
+            const continuousRanges = findContinuousRanges(numbers);
+            continuousRanges.forEach(range => {
+                const rangeKey = `${range.start}-${range.end}`;
+                if (!acc[seriesKey].ranges[rangeKey]) {
+                    acc[seriesKey].ranges[rangeKey] = {
+                        startNumber: range.start.toString(),
+                        endNumber: range.end.toString(),
+                        series: {},
+                        serialNum,
+                        price: Number(selectedPrice)
+                    };
+                }
+
+                if (ticket.number >= range.start && ticket.number <= range.end) {
+                    if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
+                        acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
+                    }
+                    acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
+                }
+            });
+
+            return acc;
+        }, {});
+    };
+
+    const processSummaryIntoGroups = (ticketSummary) => {
+        return Object.entries(ticketSummary).map(([key, value]) => {
+            const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
+                const seriesList = Object.keys(rangeData.series).sort();
+                const seriesGroups = seriesList.reduce((groups, serial) => {
+                    const currentGroup = groups[groups.length - 1];
+
+                    if (groups.length === 0 ||
+                        serial.charCodeAt(0) - currentGroup.serials[currentGroup.serials.length - 1].charCodeAt(0) > 1) {
+                        groups.push({
+                            start: serial,
+                            end: serial,
+                            serials: [serial]
+                        });
+                    } else {
+                        currentGroup.end = serial;
+                        currentGroup.serials.push(serial);
+                    }
+                    return groups;
+                }, []);
+
+                seriesGroups.forEach(group => {
+                    const groupKey = `${group.start}-${group.end}`;
+                    if (!acc[groupKey]) {
+                        acc[groupKey] = {
+                            series: group.serials.join(','),
+                            ranges: []
+                        };
+                    }
+                    const count = group.serials.reduce((sum, serial) =>
+                        sum + (rangeData.series[serial] || 0), 0);
+
+                    acc[groupKey].ranges.push({
+                        startNumber: rangeData.startNumber,
+                        endNumber: rangeData.endNumber,
+                        count,
+                        price: rangeData.price
+                    });
+                });
+
+                return acc;
+            }, {});
+
+            return {
+                ticketname: value.ticketname,
+                drawDate: value.drawDate,
+                serialNum: value.serialNum,
+                groups: Object.values(rangeGroups)
+            };
+        });
+    };
+
+    const createFinalSummary = (sortedSummary) => {
+        return sortedSummary
+            .sort((a, b) => {
+                const ticketCompare = a.ticketname.localeCompare(b.ticketname);
+                if (ticketCompare !== 0) return ticketCompare;
+
+                return a.groups[0]?.series.localeCompare(b.groups[0]?.series || '') || 0;
+            })
+            .map(item => ({
+                ...item,
+                serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
+                groups: item.groups.map(group => ({
+                    ...group,
+                    ranges: group.ranges
+                        .sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
+                    totalAmount: group.ranges.reduce((sum, range) =>
+                        sum + (range.count * range.price), 0)
+                }))
+            }));
+    };
+
+    const generateSummary = (selectedTickets, selectedPrice) => {
+        const summary = createTicketSummary(selectedTickets, selectedPrice);
+        const groupedSummary = processSummaryIntoGroups(summary);
+        return createFinalSummary(groupedSummary);
+    };
+
+    const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
+
     return (
         <div className="flex flex-col h-screen bg-gray-100 p-4">
-            <button onClick={handleNav}>Home</button>
-            <div className="bg-blue-700 text-white p-2 mb-4">
-                <h1 className="text-xl font-semibold">Bills Management</h1>
+            <div className="flex justify-between items-center mb-6">
+                <button
+                    onClick={() => navigate('/')}
+                    className="bg-[#6c757d] hover:bg-[#545b62] text-white font-bold py-2 px-4"
+                >
+                    Home
+                </button>
+                <h1 className="text-2xl font-bold text-gray-800">Bills Management</h1>
+                <div className="w-20"></div>
             </div>
 
             <div className="flex justify-between mb-4">
@@ -275,6 +463,18 @@ const BillDetails = () => {
                     onUpdateBill={handleSaveEdit}
                 />
             )}
+            <>
+                <SlipModal
+                    isOpen={modalIsOpen}
+                    onRequestClose={() => setModalIsOpen(false)}
+                    ticketSummary={finalSortedSummary}
+                    currentDateTime={new Date()}
+                    name={buyerName}
+                    pwt={pwtPrice}
+                    billno={tempBillNo}
+                    onPrintSuccess={handlePrintSuccess}
+                />
+            </>
         </div>
     );
 };
