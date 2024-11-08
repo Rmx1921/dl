@@ -7,10 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { findBills, getBills,saveBills} from './helpers/billsdb';
 import BillEditModal from './BillEditModal';
 import SlipModal from './SlipModal'
-
+import {useModal} from '../contexts/ModalContext'
 
 const BillDetails = () => {
     const navigate = useNavigate();
+    const { openModal } = useModal();
 
     const [searchDate, setSearchDate] = useState(null);
     const [billsData, setBillsData] = useState([]);
@@ -23,9 +24,8 @@ const BillDetails = () => {
     const [tempBillNo, setTempBillNo] = useState(null);
     const [pwtPrice, setpwtPrice] = useState(0)
     const [selectedPrice, setSelectedPrice] = useState(0);
-    
+
     const handlePrinting = (bill)=>{
-        console.log(bill)
         setSelectedTickets(new Set(bill.tickets))
         setBuyerName(bill.name);
         setTempBillNo(bill.billno)
@@ -328,6 +328,10 @@ const BillDetails = () => {
 
     const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
 
+    const handleRestBillNumber = ()=>{
+        openModal('CANCEL_BUTTON')
+    }
+
     return (
         <div className="flex flex-col h-screen bg-gray-100 p-4">
             <div className="flex justify-between items-center mb-6">
@@ -339,6 +343,10 @@ const BillDetails = () => {
                 </button>
                 <h1 className="text-2xl font-bold text-gray-800">Bills Management</h1>
                 <div className="w-20"></div>
+                <button 
+                    onClick={handleRestBillNumber}
+                    className="bg-red-500 hover:bg-[#545b62] text-white font-bold py-2 px-4"
+                > Reset Bill Number</button>
             </div>
 
             <div className="flex justify-between mb-4">
