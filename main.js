@@ -20,6 +20,8 @@ autoUpdater.logger = log;
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
+const appVersion = app.getVersion();
+
 function setupAutoUpdater(mainWindow) {
     if (isDev) {
         log.info('Auto-updater disabled in development mode');
@@ -293,6 +295,11 @@ const customMenu = [
                         console.error('Main window or webContents not defined.');
                     }
                 }
+            },
+            { type: 'separator' },
+            {
+                label: `Version ${appVersion}`,
+                enabled: false
             }
         ]
     }
