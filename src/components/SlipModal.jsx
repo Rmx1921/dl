@@ -154,86 +154,86 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
     }
 
     return (
-        <div ref={contentRef} style={styles.page}>
-            <div style={styles.header}>Devan Lottery Agency</div>
-            <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
+            <div ref={contentRef} id="print-content" style={styles.page}>  
+                <div style={styles.header}>Devan Lottery Agency</div>
+                <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
 
-            <div className='flex justify-between'>
-                <div style={styles.infoColumn}>
-                    <p><span style={styles.boldText}>Date:</span> {formatDate(currentDateTime)}</p>
-                    <p><span style={styles.boldText}></span> {out}</p>
+                <div className='flex justify-between'>
+                    <div style={styles.infoColumn}>
+                        <p><span style={styles.boldText}>Date:</span> {formatDate(currentDateTime)}</p>
+                        <p><span style={styles.boldText}></span> {out}</p>
+                    </div>
+                    <div className='item-end'>
+                        <p><span style={styles.boldText}>Name:</span> {name}</p>
+                        <p><span style={styles.boldText}>Bill no : </span>{billno}</p>
+                    </div>
                 </div>
-                <div className='item-end'>
-                    <p><span style={styles.boldText}>Name:</span> {name}</p>
-                    <p><span style={styles.boldText}>Bill no : </span>{billno}</p>
-                </div>
-            </div>
 
-            <div style={styles.borderBottom} />
+                <div style={styles.borderBottom} />
 
-            <table style={styles.rangeTable}>
-                <thead>
-                    <tr>
-                        <th style={styles.tableHeader}>No</th>
-                        <th style={styles.tableHeader}>Lottery Draw</th>
-                        <th style={styles.tableHeader}>Qty</th>
-                        <th style={styles.tableHeader}>Rate</th>
-                        <th style={styles.tableHeader}>Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {ticketSummary.map((item, index) => (
-                        <React.Fragment key={index}>
-                            <tr>
-                                <td style={styles.tableCell}>{index + 1}.</td>
-                                <td style={styles.tableCell}>{item.ticketname} {item.serialNum} - {item.drawDate}</td>
-                                <td style={styles.tableCell}></td>
-                                <td style={styles.tableCell}></td>
-                                <td style={styles.tableCell}></td>
-                            </tr>
-                            {item.groups.map((group, groupIndex) => (
-                                <React.Fragment key={groupIndex}>
-                                    <tr>
-                                        <td style={styles.tableCell}></td>
-                                        <td style={styles.tableCell}>({group.series})</td>
-                                        <td style={styles.tableCell}></td>
-                                        <td style={styles.tableCell}></td>
-                                        <td style={styles.tableCell}></td>
-                                    </tr>
-                                    {group.ranges.map((range, rangeIndex) => (
-                                        <tr key={rangeIndex}>
+                <table style={styles.rangeTable}>
+                    <thead>
+                        <tr>
+                            <th style={styles.tableHeader}>No</th>
+                            <th style={styles.tableHeader}>Lottery Draw</th>
+                            <th style={styles.tableHeader}>Qty</th>
+                            <th style={styles.tableHeader}>Rate</th>
+                            <th style={styles.tableHeader}>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ticketSummary.map((item, index) => (
+                            <React.Fragment key={index}>
+                                <tr>
+                                    <td style={styles.tableCell}>{index + 1}.</td>
+                                    <td style={styles.tableCell}>{item.ticketname} {item.serialNum} - {item.drawDate}</td>
+                                    <td style={styles.tableCell}></td>
+                                    <td style={styles.tableCell}></td>
+                                    <td style={styles.tableCell}></td>
+                                </tr>
+                                {item.groups.map((group, groupIndex) => (
+                                    <React.Fragment key={groupIndex}>
+                                        <tr>
                                             <td style={styles.tableCell}></td>
-                                            <td style={styles.tableCell}>{`${range.startNumber}-${range.endNumber}`}</td>
-                                            <td style={styles.tableCell}>{range.count.toString().padStart(3, ' ')}</td>
-                                            <td style={styles.tableCell}>{range.price.toFixed(2)}</td>
-                                            <td style={styles.tableCell}>{(range.count * range.price).toFixed(2).padStart(9, ' ')}</td>
+                                            <td style={styles.tableCell}>({group.series})</td>
+                                            <td style={styles.tableCell}></td>
+                                            <td style={styles.tableCell}></td>
+                                            <td style={styles.tableCell}></td>
                                         </tr>
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                        </React.Fragment>
-                    ))}
-                    <tr>
-                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
-                    </tr>
-                    <tr>
-                        <td style={styles.tableCell}></td>
-                        <td style={styles.tableCell}>Total</td>
-                        <td style={styles.tableCell}>{calculateTotalQuantity(ticketSummary[0])}</td>
-                        <td style={styles.tableCell}></td>
-                        <td style={styles.tableCell}>₹ {calculateTotal(ticketSummary[0]).toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
-                    </tr>
-                </tbody>
-            </table>
-            <div className='item-start'>
-                <p className='text-black text-sm'>PWT : ₹<span className='text-black text-sm font-semibold'>{pwt}</span></p>
-                <p className='text-black text-sm'>Total Payable Amount : ₹<span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
-                <p className='text-black text-sm mt-2'>DC shall be claimed within 30 days</p>
+                                        {group.ranges.map((range, rangeIndex) => (
+                                            <tr key={rangeIndex}>
+                                                <td style={styles.tableCell}></td>
+                                                <td style={styles.tableCell}>{`${range.startNumber}-${range.endNumber}`}</td>
+                                                <td style={styles.tableCell}>{range.count.toString().padStart(3, ' ')}</td>
+                                                <td style={styles.tableCell}>{range.price.toFixed(2)}</td>
+                                                <td style={styles.tableCell}>{(range.count * range.price).toFixed(2).padStart(9, ' ')}</td>
+                                            </tr>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                            </React.Fragment>
+                        ))}
+                        <tr>
+                            <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
+                        </tr>
+                        <tr>
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}>Total</td>
+                            <td style={styles.tableCell}>{calculateTotalQuantity(ticketSummary[0])}</td>
+                            <td style={styles.tableCell}></td>
+                            <td style={styles.tableCell}>₹ {calculateTotal(ticketSummary[0]).toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div className='item-start'>
+                    <p className='text-black text-sm'>PWT : ₹<span className='text-black text-sm font-semibold'>{pwt}</span></p>
+                    <p className='text-black text-sm'>Total Payable Amount : ₹<span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
+                    <p className='text-black text-sm mt-2'>DC shall be claimed within 30 days</p>
+                </div>
             </div>
-        </div>
     );
 });
 
@@ -250,11 +250,17 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
         console.log('handlePrint called');
         setIsPrinting(true);
         try {
-            const printResult = await window.electronAPI.print();
+            const content = document.getElementById('print-content');
+            if (!content) {
+                throw new Error('Print content not found');
+            }
+            const htmlContent = content.outerHTML;
+            const printResult = await window.electronAPI.print(htmlContent);
             console.log('print result:', printResult);
 
             const pdfResult = await window.electronAPI.printToPDF({
-                fileName: `${currentBillNo}.pdf`
+                fileName: `${currentBillNo}.pdf`,
+                htmlContent: htmlContent
             });
             console.log('printToPDF result:', pdfResult);
 
