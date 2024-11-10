@@ -4,10 +4,10 @@ import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { FaEdit, FaTrash, FaDownload } from 'react-icons/fa';
+import { FaEdit, FaTrash} from 'react-icons/fa';
 
 class Lottery {
-    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier) {
+    constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier,date) {
         this.id = `${serial}-${number}`;
         this.serial = serial;
         this.number = number;
@@ -16,6 +16,7 @@ class Lottery {
         this.state = state;
         this.drawDate = drawDate;
         this.identifier = identifier;
+        this.date= date
     }
 }
 
@@ -29,7 +30,7 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
     for (let alphabet = 0; alphabet < alphabet_limit; alphabet++) {
         if (temp_first_lott_ser[1] !== 'I' && temp_first_lott_ser[1] !== 'Q') {
             for (let num = 0; num < 25; num++) {
-                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier));
+                ticket_arr.push(new Lottery(temp_first_lott_ser, temp_first_lottery_num, ticketname, serialNumber, true, drawDate, identifier,new Date()));
                 temp_first_lottery_num++;
                 if (temp_first_lottery_num > lastNumber) break;
             }
@@ -42,27 +43,18 @@ const generateLotteryTickets = (firstSerial, lastSerial, firstNumber, lastNumber
 };
 
 const LotteryTicketGenerator = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [firstSerial, setFirstSerial] = useState('');
     const [lastSerial, setLastSerial] = useState('');
     const [firstNumber, setFirstNumber] = useState('');
     const [lastNumber, setLastNumber] = useState('');
     const [serialNumber, setSerialNumber] = useState('');
     const [lotteryTickets, setLotteryTickets] = useState([]);
-    const [selectedSerials, setSelectedSerials] = useState([]);
     const [ticketname, setTicketName] = useState('');
-    const [showDropdown, setShowDropdown] = useState({});
     const dropdownRefs = useRef({});
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [drawDate, setDrawDate] = useState(new Date());
 
     const inputRefs = useRef([]);
-
-    // const handleEnterPress = (index) => {
-    //     if (index < inputRefs.current.length - 1) {
-    //         inputRefs.current[index + 1].focus();
-    //     }
-    // };
 
     function formatDate(date) {
         return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -118,7 +110,7 @@ const LotteryTicketGenerator = () => {
     const handleGenerate = async () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
-        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname, serialNumber, drawDate);
+        const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname.toLocaleUpperCase(), serialNumber, drawDate);
         const ticketsFromDB = await getAllTicketsFromDB();
 
         const filteredNewTickets = newTickets.filter(newTicket => {
@@ -131,7 +123,7 @@ const LotteryTicketGenerator = () => {
             await saveTicketsToDB(filteredNewTickets);
             toast.success('Tickets added');
         } else {
-            toast.error('No new tickets to add or some tickets are already existing in the specified range');
+            toast.error('Some tickets are already existing in the specified range');
         }
     };
 
@@ -155,28 +147,7 @@ const LotteryTicketGenerator = () => {
 
         toast.success('Tickets deleted successfully.');
     };
-    const summarizeTicketsByPrefix = () => {
-        const ticketSummary = {};
-
-        lotteryTickets.forEach(ticket => {
-            const prefix = ticket.serial[0];
-            const key = `${prefix}-${ticket.ticketname}`;
-
-            if (!ticketSummary[key]) {
-                ticketSummary[key] = {
-                    start: ticket.serial + ticket.number.toString(),
-                    end: ticket.serial + ticket.number.toString(),
-                    count: 1
-                };
-            } else {
-                ticketSummary[key].end = ticket.serial + ticket.number.toString();
-                ticketSummary[key].count += 1;
-            }
-        });
-
-        return ticketSummary;
-    };
-
+    
     const TicketsByPrefix = () => {
         const ticketSummary = {};
 
@@ -192,23 +163,21 @@ const LotteryTicketGenerator = () => {
                     serials: [serialNumber],
                     ticketname: ticket.ticketname,
                     drawDate: ticket.drawDate,
-                    identifier: ticket.identifier
+                    identifier: ticket.identifier,
+                    unsoldCount: ticket.state ? 1 : 0
                 };
             } else {
                 ticketSummary[key].end = serialNumber;
                 ticketSummary[key].count += 1;
                 ticketSummary[key].serials.push(serialNumber);
+                if (ticket.state) {
+                    ticketSummary[key].unsoldCount += 1;
+                }
             }
         });
 
         return ticketSummary;
     };
-
-    const ticketSummary = summarizeTicketsByPrefix();
-    const ticketSub = TicketsByPrefix();
-    const selectedTicketSummary = Object.fromEntries(
-        Object.entries(ticketSummary).filter(([prefix]) => selectedSerials.includes(prefix))
-    );
 
     return (
         <div className="flex flex-col w-full min-h-screen p-8 bg-[#f0f0f0]">
@@ -244,7 +213,7 @@ const LotteryTicketGenerator = () => {
                     </button>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-md shadow-md mt-8">
+            <div className="bg-white p-6 mt-8">
                 <h2 className="text-xl font-bold mb-4">Tickets</h2>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
@@ -254,17 +223,23 @@ const LotteryTicketGenerator = () => {
                                 <th className="px-4 py-2 text-left">Start Serial</th>
                                 <th className="px-4 py-2 text-left">End Serial</th>
                                 <th className="px-4 py-2 text-left">Count</th>
+                                <th className='px-4 py-2 text-left'>unsold tickets</th>
                                 <th className="px-4 py-2 text-left">Draw Date</th>
                                 <th className="px-4 py-2 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {Object.entries(TicketsByPrefix()).map(([key, { start, end, count, serials, ticketname, drawDate, identifier }]) => (
-                                <tr key={key} className="border-t border-[#e9ecef] hover:bg-[#f8f9fa]">
+                            {Object.entries(TicketsByPrefix()).sort(([, a], [, b]) => b.date - a.date).map(([key, { start, end, count, serials, ticketname, drawDate, identifier, unsoldCount }]) => (
+                                <tr key={key} className={`border-t border-[#5e5f5f]`}>
                                     <td className="px-4 py-2">{ticketname}</td>
                                     <td className="px-4 py-2">{start}</td>
                                     <td className="px-4 py-2">{end}</td>
                                     <td className="px-4 py-2">{count}</td>
+                                    {unsoldCount === 0 ? (
+                                        <td className="px-4 py-2">sold out</td>
+                                    ):(
+                                        <td className="px-4 py-2">{unsoldCount}</td>
+                                    )}
                                     <td className="px-4 py-2">{formatDate(drawDate)}</td>
                                     <td className="px-4 py-2 flex items-center space-x-2">
                                         {/* <button
@@ -273,12 +248,14 @@ const LotteryTicketGenerator = () => {
                                         >
                                             <FaEdit />
                                         </button> */}
-                                        <button
-                                            onClick={() => handleDeleteTicket(identifier)}
-                                            className="bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-1 px-2 rounded text-sm"
-                                        >
-                                            <FaTrash />
-                                        </button>
+                                        {unsoldCount !== 0 && (
+                                            <button
+                                                onClick={() => handleDeleteTicket(identifier)}
+                                                className="bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-1 px-2 rounded text-sm"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
