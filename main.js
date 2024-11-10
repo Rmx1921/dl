@@ -194,44 +194,140 @@ function createWindow() {
         autoUpdater.quitAndInstall(false, true);
     });
 
-    ipcMain.handle('print', async (event) => {
+    ipcMain.handle('print', async (event, htmlContent) => {
         log.info('Print request received');
-        const win = BrowserWindow.fromWebContents(event.sender);
-        return new Promise((resolve) => {
-            const printOptions = {
-                silent: true,
-                printBackground: true,
-                color: false,
-                margin: { marginType: 'none' },
-                landscape: false,
-                pagesPerSheet: 1,
-                collate: false,
-                copies: 1,
-                header: '',
-                footer: ''
-            };
-            win.webContents.print(printOptions, (success, failureReason) => {
-                if (success) {
-                    const jobId = Date.now();
-                    log.info(`Print job initiated with ID: ${jobId}`);
-                    simplifiedMonitorPrintJob(jobId);
-                    resolve({ success: true, jobId, message: 'Print Initiated' });
-                } else {
-                    log.error(`Print failed: ${failureReason}`);
-                    resolve({ success: false, message: failureReason });
+        try {
+            const win = new BrowserWindow({
+                width: 800,
+                height: 600,
+                show: false,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
                 }
             });
-        });
+
+            const htmlTemplate = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    @page { margin: 0; }
+                    body { margin: 0; font-family: Helvetica, Arial, sans-serif; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; }
+                    }
+                    .flex { display: flex; }
+                    .justify-between { justify-content: space-between; }
+                    .item-end { align-items: flex-end; }
+                    .item-start { align-items: flex-start; }
+                    .text-black { color: black; }
+                    .text-sm { font-size: 0.875rem; }
+                    .font-semibold { font-weight: 600; }
+                    .mt-2 { margin-top: 0.5rem; }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+            </body>
+            </html>
+        `;
+            await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlTemplate)}`);
+
+            return new Promise((resolve) => {
+                const printOptions = {
+                    silent: true,
+                    printBackground: true,
+                    color: false,
+                    margin: { marginType: 'none' },
+                    landscape: false,
+                    pagesPerSheet: 1,
+                    collate: false,
+                    copies: 1,
+                    header: '',
+                    footer: '',
+                    pageSize: {
+                        width: 105000,
+                        height: 148000,
+                    }
+                };
+
+                win.webContents.print(printOptions, (success, failureReason) => {
+                    if (success) {
+                        const jobId = Date.now();
+                        log.info(`Print job initiated with ID: ${jobId}`);
+                        simplifiedMonitorPrintJob(jobId);
+                        win.close();
+                        resolve({ success: true, jobId, message: 'Print Initiated' });
+                    } else {
+                        log.error(`Print failed: ${failureReason}`);
+                        win.close();
+                        resolve({ success: false, message: failureReason });
+                    }
+                });
+            });
+        } catch (error) {
+            log.error('Print error:', error);
+            return { success: false, message: error.message };
+        }
     });
 
     ipcMain.handle('print-to-pdf', async (event, options) => {
         log.info('Print to PDF request received');
         try {
-            const win = BrowserWindow.fromWebContents(event.sender);
+            const win = new BrowserWindow({
+                width: 800,
+                height: 600,
+                show: false,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                }
+            });
+
+            const htmlTemplate = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    @page { margin: 0; }
+                    body { margin: 0; font-family: Helvetica, Arial, sans-serif; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; }
+                    }
+                    .flex { display: flex; }
+                    .justify-between { justify-content: space-between; }
+                    .item-end { align-items: flex-end; }
+                    .item-start { align-items: flex-start; }
+                    .text-black { color: black; }
+                    .text-sm { font-size: 0.875rem; }
+                    .font-semibold { font-weight: 600; }
+                    .mt-2 { margin-top: 0.5rem; }
+                </style>
+            </head>
+            <body>
+                ${options.htmlContent}
+            </body>
+            </html>
+        `;
+            await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlTemplate)}`);
+
             const pdfPath = path.join(app.getPath('downloads'), options.fileName || 'print.pdf');
             log.info(`Printing to PDF: ${pdfPath}`);
-            const data = await win.webContents.printToPDF({});
+
+            const data = await win.webContents.printToPDF({
+                printBackground: true,
+                margins: {
+                    marginType: 'none'
+                },
+                pageSize: 'A4',
+                printSelectionOnly: false,
+                landscape: false
+            });
+
             await fs.writeFile(pdfPath, data);
+            win.close();
+
             log.info('PDF created successfully');
             return { success: true, message: `Printed to: ${pdfPath}` };
         } catch (error) {
