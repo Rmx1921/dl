@@ -16,14 +16,17 @@ const BillDetails = () => {
     const [searchDate, setSearchDate] = useState(null);
     const [billsData, setBillsData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [totalCount, setTotalCount] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalIsOpen, setModalIsOpen] = useState(false);
     const [selectedBill, setSelectedBill] = useState(null);
-    const [selectedTickets,setSelectedTickets]= useState(new Set())
+    const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
     const [tempBillNo, setTempBillNo] = useState(null);
-    const [pwtPrice, setpwtPrice] = useState(0)
+    const [pwtPrice, setpwtPrice] = useState(0);
     const [selectedPrice, setSelectedPrice] = useState(0);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [pageSize, setCurrentPageSize] = useState(5);
 
     const handlePrinting = (bill)=>{
         setSelectedTickets(new Set(bill.tickets))
@@ -46,7 +49,7 @@ const BillDetails = () => {
     const handleSaveEdit = async (updatedBill) => {
         try {
             await saveBills(updatedBill)
-            await fetchBills(pageIndex, pageSize);
+            await fetchBills(currentPage, pageSize);
             setIsModalOpen(false);
             setSelectedBill(null);
         } catch (error) {
@@ -54,11 +57,12 @@ const BillDetails = () => {
         }
     };
 
-    const fetchBills = async (pageIndex, pageSize) => {
+    const fetchBills = async (page, size) => {
         setLoading(true);
         try {
-            const bills = await getBills(pageSize, pageIndex * pageSize);
-            processBilldata(bills);
+            const result = await getBills(size, page * size);
+            setTotalCount(result.total);
+            processBilldata(result.data);
         } catch (error) {
             console.error('Error fetching bills:', error);
         }
@@ -88,68 +92,21 @@ const BillDetails = () => {
     };
 
     useEffect(() => {
-        fetchBills(0, 5);
-    }, []);
+        fetchBills(currentPage, pageSize);
+    }, [currentPage, pageSize]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+    };
+
+    // const handlePageSizeChange = (newSize) => {
+    //     setCurrentPageSize(newSize);
+    //     setCurrentPage(0);
+    // };
 
     const data = React.useMemo(() => billsData, [billsData]);
+    const pageCount = Math.ceil(totalCount / pageSize);
 
-    const columns = React.useMemo(
-        () => [
-            { Header: 'BillNo', accessor: 'billno' },
-            { Header: 'Type',accessor: 'type'},
-            { Header: 'Buyer Name', accessor: 'name' },
-            { Header: 'Date', accessor: 'date' },
-            { Header: 'Amount', accessor: 'totalAmount' },
-            {
-                Header: 'Actions',
-                Cell: ({ row }) => (
-                    <button
-                        onClick={() => handleEdit(row.original)}
-                        className="px-4 py-2 bg-green-500 text-white"
-                    >
-                        Edit
-                    </button>
-                ),
-            },
-            {
-                Header: 'Print',
-                Cell: ({ row }) => (
-                    <button
-                        onClick={() => handlePrinting(row.original)}
-                        className="px-4 py-2 bg-blue-400 text-white"
-                    >
-                        Print
-                    </button>
-                ),
-            }
-        ],
-        []
-    );
-
-    const {
-        getTableProps,
-        getTableBodyProps,
-        headerGroups,
-        page,
-        prepareRow,
-        state,
-        setGlobalFilter,
-        canPreviousPage,
-        canNextPage,
-        pageOptions,
-        pageCount,
-        gotoPage,
-        nextPage,
-        previousPage,
-        setPageSize,
-    } = useTable(
-        { columns, data, initialState: { pageIndex: 0, pageSize: 5 } },
-        useGlobalFilter,
-        useSortBy,
-        usePagination
-    );
-
-    const { globalFilter, pageIndex, pageSize } = state;
 
     const searchBills = async (query) => {
         setLoading(true);
@@ -163,7 +120,7 @@ const BillDetails = () => {
     };
 
     const handleSearchChange = (e) => {
-        setGlobalFilter(e.target.value);
+        // setGlobalFilter(e.target.value);
     };
 
     const handleDateSearch = () => {
@@ -352,7 +309,7 @@ const BillDetails = () => {
             <div className="flex justify-between mb-4">
                 <div className="flex items-center space-x-2 w-1/3 relative">
                     <input
-                        value={globalFilter || ""}
+                        value={""}
                         onChange={handleSearchChange}
                         placeholder="Search bills..."
                         className="pl-8 pr-4 py-2 w-full border rounded-md"
@@ -373,90 +330,85 @@ const BillDetails = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow flex-grow overflow-hidden">
-                <table {...getTableProps()} className="min-w-full">
-                    <thead>
-                        {headerGroups.map(headerGroup => {
-                            const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps();
-                            return (
-                                <tr key={key} {...headerGroupProps} className="bg-gray-50 border-b">
-                                    {headerGroup.headers.map(column => {
-                                        const { key, ...columnProps } = column.getHeaderProps(column.getSortByToggleProps());
-                                        return (
-                                            <th
-                                                key={key}
-                                                {...columnProps}
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                {column.render('Header')}
-                                                <span>
-                                                    {column.isSorted
-                                                        ? column.isSortedDesc
-                                                            ? <ChevronDown className="w-4 h-4 inline-block ml-1" />
-                                                            : <ChevronUp className="w-4 h-4 inline-block ml-1" />
-                                                        : ''}
-                                                </span>
-                                            </th>
-                                        );
-                                    })}
+                {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                ) : (
+                    <table className="min-w-full">
+                        <thead>
+                            <tr className="bg-gray-50 border-b">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bill No</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer Name</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Print</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {billsData.map((bill) => (
+                                <tr key={bill.id} className="border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.billno}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.type}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.date}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.totalAmount}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handleEdit(bill)}
+                                            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                                        >
+                                            Edit
+                                        </button>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <button
+                                            onClick={() => handlePrinting(bill)}
+                                            className="px-4 py-2 bg-blue-400 text-white rounded-md hover:bg-blue-500"
+                                        >
+                                            Print
+                                        </button>
+                                    </td>
                                 </tr>
-                            );
-                        })}
-                    </thead>
-                    <tbody {...getTableBodyProps()}>
-                        {page.map(row => {
-                            prepareRow(row);
-                            const { key, ...rowProps } = row.getRowProps();
-                            return (
-                                <tr key={key} {...rowProps} className="bg-white border-b">
-                                    {row.cells.map(cell => {
-                                        const { key, ...cellProps } = cell.getCellProps();
-                                        return (
-                                            <td
-                                                key={key}
-                                                {...cellProps}
-                                                className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                                            >
-                                                {cell.render('Cell')}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-lg">
                 <button
-                    onClick={() => previousPage()}
-                    disabled={!canPreviousPage}
-                    className="flex items-center px-4 py-2 bg-white border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0 || loading}
+                    className="flex items-center px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     Previous
                 </button>
+
                 <span className="text-sm text-gray-700">
-                    Page{' '}
-                    <strong>
-                        {pageIndex + 1} of {pageOptions.length}
-                    </strong>
+                    Page {currentPage + 1} of {pageCount} | Total Records: {totalCount}
                 </span>
-                <select
+
+                {/* <select
                     value={pageSize}
-                    onChange={e => setPageSize(Number(e.target.value))}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                     className="text-sm text-gray-700 bg-white border rounded-md px-2 py-1"
+                    disabled={loading}
                 >
-                    {[5, 10, 20].map(pageSize => (
-                        <option key={pageSize} value={pageSize}>
-                            Show {pageSize}
+                    {[5, 10, 20, 50].map(size => (
+                        <option key={size} value={size}>
+                            Show {size}
                         </option>
                     ))}
-                </select>
+                </select> */}
+
                 <button
-                    onClick={() => nextPage()}
-                    disabled={!canNextPage}
-                    className="flex items-center px-4 py-2 bg-white border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= pageCount - 1 || loading}
+                    className="flex items-center px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Next
                     <ChevronRight className="w-4 h-4 ml-2" />
