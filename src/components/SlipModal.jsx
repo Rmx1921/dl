@@ -22,60 +22,127 @@ const modalStyles = {
 
 const styles = {
     page: {
-        fontFamily: 'Helvetica, Arial, sans-serif',
-        padding: '20px',
-        maxWidth: '800px',
+        fontFamily: 'Helvetica, Arial, sans-serif,Times-New-Roman',
+        padding: '10px',
+        maxWidth: '400px',
         margin: '0 auto',
+        fontSize: '10px',
     },
     header: {
-        marginBottom: '10px',
+        marginBottom: '5px',
         textAlign: 'center',
-        fontSize: '24px',
+        fontSize: '20px',
         fontWeight: 'bold',
     },
     subheader: {
         textAlign: 'center',
-        fontSize: '14px',
-        marginBottom: '20px',
+        fontSize: '12px',
+        marginBottom: '10px',
     },
     infoColumn: {
         flex: '1',
+        fontSize: '10px',
     },
-    boldText: { fontWeight: 'bold' },
+    boldText: { 
+        fontWeight: 'bold',
+        fontSize: '11px',
+    },
     borderBottom: {
         borderBottom: '1px dashed black',
-        margin: '10px 0',
+        margin: '5px 0',
     },
     ticketSection: {
-        marginBottom: '15px',
+        marginBottom: '8px',
     },
     ticketHeader: {
-        fontSize: '16px',
+        fontSize: '11px',
         fontWeight: 'bold',
-        marginBottom: '5px',
+        marginBottom: '3px',
     },
     groupSection: {
-        marginLeft: '20px',
-        marginBottom: '10px',
+        marginLeft: '10px',
+        marginBottom: '5px',
     },
     seriesText: {
         fontWeight: 'bold',
-        marginBottom: '5px',
+        marginBottom: '3px',
+        fontSize: '10px',
     },
     rangeTable: {
         width: '100%',
         borderCollapse: 'collapse',
+        tableLayout: 'fixed',
     },
     tableHeader: {
         borderBottom: '1px solid black',
         textAlign: 'left',
-        padding: '5px',
+        padding: '2px',
+        fontSize: '10px',
+        whiteSpace: 'nowrap',
+    },
+    drawHeader: {
+        borderBottom: '1px solid black',
+        textAlign: 'left',
+        padding: '2px',
+        fontSize: '10px',
+        whiteSpace: 'nowrap',
+    },
+    valueHeader: {
+        borderBottom: '1px solid black',
+        textAlign: 'center',
+        padding: '2px',
+        fontSize: '10px',
+        whiteSpace: 'nowrap',
     },
     tableCell: {
-        padding: '5px',
+        padding: '4px',
         fontFamily: 'Courier, monospace',
         fontSize: '12px',
+        whiteSpace: 'wrap',
+        fontWeight:'bold',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
     },
+    tablegrpCell: {
+        padding: '4px',
+        fontFamily: 'Courier, monospace',
+        fontSize: '12px',
+        whiteSpace: 'wrap',
+        fontWeight: 'bold',
+        textOverflow: 'ellipsis',
+    },
+    tableqtyCell: {
+        padding: '4px',
+        fontFamily: 'Courier, monospace',
+        fontSize: '12px',
+        whiteSpace: 'wrap',
+        fontWeight: 'bold',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    tabletotalCell: {
+        padding: '0px',
+        fontFamily: 'Courier, monospace',
+        fontSize: '12px',
+        whiteSpace: 'nowrap',
+        fontWeight: 'bold',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    tabletkCell: {
+        padding: '4px',
+        fontFamily: 'Courier, monospace',
+        fontSize: '15px',
+        whiteSpace: 'wrap',
+        fontWeight: 'bold',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
+    colNo: { width: '8%' },
+    colDraw: { width: '120%' },
+    colQty: { width: '17%' },
+    colRate: { width: '23%' },
+    colValue: { width: '35%' },
     buttonContainer: {
         position: 'absolute',
         bottom: '0',
@@ -104,7 +171,7 @@ const styles = {
     },
 };
 
-const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt, billno }, ref) => {
+const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt, billno,total,setTotal}, ref) => {
     const contentRef = useRef();
 
     useImperativeHandle(ref, () => ({
@@ -122,125 +189,127 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
     }
     let out = formattedDate(currentDateTime)
 
-    const calculateTotal = (item) => {
-        const total = item.groups.reduce((acc, group) => {
-            return acc + group.ranges.reduce((groupAcc, range) => {
-                return groupAcc + range.count * range.price;
+    const calculateTotal = (items) => {
+        const output = items.reduce((acc, item) => {
+            return acc + item.groups.reduce((groupAcc, group) => {
+                return groupAcc + group.ranges.reduce((rangeAcc, range) => {
+                    return rangeAcc + range.count * range.price;
+                }, 0);
             }, 0);
         }, 0);
-        return total
+        setTotal(output)
+        return output
     };
 
+
     const calculatePayable = (item) => {
-        const total = item.groups.reduce((acc, group) => {
-            return acc + group.ranges.reduce((groupAcc, range) => {
-                return groupAcc + range.count * range.price;
-            }, 0);
-        }, 0);
         return pwt ? total - pwt : total;
     };
 
-    const calculateTotalQuantity = (item) => {
-        return item.groups.reduce((acc, group) => {
-            return acc + group.ranges.reduce((groupAcc, range) => {
-                return groupAcc + range.count;
+    const calculateTotalQuantity = (items) => {
+        const totalQuantity = items.reduce((acc, item) => {
+            return acc + item.groups.reduce((groupAcc, group) => {
+                return groupAcc + group.ranges.reduce((rangeAcc, range) => {
+                    return rangeAcc + range.count;
+                }, 0);
             }, 0);
         }, 0);
+        return totalQuantity
     };
-
 
     function formatDate(date) {
         return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     }
 
     return (
-            <div ref={contentRef} id="print-content" style={styles.page}>  
-                <div style={styles.header}>Devan Lottery Agency</div>
-                <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
+        <div ref={contentRef} id="print-content" style={styles.page}>  
+            <div style={styles.header}>Devan Lottery Agency</div>
+            <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
 
-                <div className='flex justify-between'>
-                    <div style={styles.infoColumn}>
-                        <p><span style={styles.boldText}>Date:</span> {formatDate(currentDateTime)}</p>
-                        <p><span style={styles.boldText}></span> {out}</p>
-                    </div>
-                    <div className='item-end'>
-                        <p><span style={styles.boldText}>Name:</span> {name}</p>
-                        <p><span style={styles.boldText}>Bill no : </span>{billno}</p>
-                    </div>
+            <div className='flex justify-between'>
+                <div style={styles.infoColumn}>
+                    <p><span style={styles.boldText}>Bill no : </span><span style={styles.boldText}>{billno}</span></p>
+                    <p><span style={styles.boldText}>Name: </span><span style={styles.boldText}>{name}</span></p>
                 </div>
-
-                <div style={styles.borderBottom} />
-
-                <table style={styles.rangeTable}>
-                    <thead>
-                        <tr>
-                            <th style={styles.tableHeader}>No</th>
-                            <th style={styles.tableHeader}>Lottery Draw</th>
-                            <th style={styles.tableHeader}>Qty</th>
-                            <th style={styles.tableHeader}>Rate</th>
-                            <th style={styles.tableHeader}>Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {ticketSummary.map((item, index) => (
-                            <React.Fragment key={index}>
-                                <tr>
-                                    <td style={styles.tableCell}>{index + 1}.</td>
-                                    <td style={styles.tableCell}>{item.ticketname} {item.serialNum} - {item.drawDate}</td>
-                                    <td style={styles.tableCell}></td>
-                                    <td style={styles.tableCell}></td>
-                                    <td style={styles.tableCell}></td>
-                                </tr>
-                                {item.groups.map((group, groupIndex) => (
-                                    <React.Fragment key={groupIndex}>
-                                        <tr>
-                                            <td style={styles.tableCell}></td>
-                                            <td style={styles.tableCell}>({group.series})</td>
-                                            <td style={styles.tableCell}></td>
-                                            <td style={styles.tableCell}></td>
-                                            <td style={styles.tableCell}></td>
-                                        </tr>
-                                        {group.ranges.map((range, rangeIndex) => (
-                                            <tr key={rangeIndex}>
-                                                <td style={styles.tableCell}></td>
-                                                <td style={styles.tableCell}>{`${range.startNumber}-${range.endNumber}`}</td>
-                                                <td style={styles.tableCell}>{range.count.toString().padStart(3, ' ')}</td>
-                                                <td style={styles.tableCell}>{range.price.toFixed(2)}</td>
-                                                <td style={styles.tableCell}>{(range.count * range.price).toFixed(2).padStart(9, ' ')}</td>
-                                            </tr>
-                                        ))}
-                                    </React.Fragment>
-                                ))}
-                            </React.Fragment>
-                        ))}
-                        <tr>
-                            <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
-                        </tr>
-                        <tr>
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}>Total</td>
-                            <td style={styles.tableCell}>{calculateTotalQuantity(ticketSummary[0])}</td>
-                            <td style={styles.tableCell}></td>
-                            <td style={styles.tableCell}>₹ {calculateTotal(ticketSummary[0]).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div className='item-start'>
-                    <p className='text-black text-sm'>PWT : ₹<span className='text-black text-sm font-semibold'>{pwt}</span></p>
-                    <p className='text-black text-sm'>Total Payable Amount : ₹<span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
-                    <p className='text-black text-sm mt-2'>DC shall be claimed within 30 days</p>
+                <div className='item-end'>
+                    <p><span style={styles.boldText}>Date:</span> {formatDate(currentDateTime)}</p>
+                    <p><span style={styles.boldText}></span> {out}</p>
                 </div>
             </div>
+
+            <div style={styles.borderBottom} />
+
+            <table style={styles.rangeTable}>
+                <thead>
+                    <tr>
+                        <th style={{...styles.tableHeader, ...styles.colNo}}>No</th>
+                        <th style={{ ...styles.drawHeader, ...styles.colDraw}}>Lottery Draw</th>
+                        <th style={{...styles.tableHeader, ...styles.colQty}}>Qty</th>
+                        <th style={{...styles.tableHeader, ...styles.colRate}}>Rate</th>
+                        <th style={{ ...styles.valueHeader, ...styles.colValue}}>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {ticketSummary.map((item, index) => (
+                        <React.Fragment key={index}>
+                            <tr>
+                                <td style={{...styles.tableCell, ...styles.colNo}}>{index + 1}.</td>
+                                <td style={{...styles.tableCell, ...styles.colDraw}}>{item.ticketname} {item.serialNum}-{item.drawDate}</td>
+                                <td style={{...styles.tableCell, ...styles.colQty}}></td>
+                                <td style={{...styles.tableCell, ...styles.colRate}}></td>
+                                <td style={{...styles.tableCell, ...styles.colValue}}></td>
+                            </tr>
+                            {item.groups.map((group, groupIndex) => (
+                                <React.Fragment key={groupIndex}>
+                                    <tr>
+                                        <td style={{...styles.tableCell, ...styles.colNo}}></td>
+                                        <td style={{ ...styles.tablegrpCell, ...styles.colDraw}}>({group.series})</td>
+                                        <td style={{...styles.tableCell, ...styles.colQty}}></td>
+                                        <td style={{...styles.tableCell, ...styles.colRate}}></td>
+                                        <td style={{...styles.tableCell, ...styles.colValue}}></td>
+                                    </tr>
+                                    {group.ranges.map((range, rangeIndex) => (
+                                        <tr key={rangeIndex}>
+                                            <td style={{...styles.tableCell, ...styles.colNo}}></td>
+                                            <td style={{ ...styles.tabletkCell, ...styles.colDraw}}>{`${range.startNumber}-${range.endNumber}`}</td>
+                                            <td style={{ ...styles.tableqtyCell, ...styles.colQty}}>{range.count.toString().padStart(3, ' ')}</td>
+                                            <td style={{...styles.tableCell, ...styles.colRate}}>{range.price.toFixed(2)}</td>
+                                            <td style={{...styles.tableCell, ...styles.colValue}}>{(range.count * range.price).toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </React.Fragment>
+                    ))}
+                    <tr>
+                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
+                    </tr>
+                    <tr>
+                        <td style={{...styles.tableCell, ...styles.colNo}}></td>
+                        <td style={{ ...styles.tabletotalCell, ...styles.colTotal}}>Total</td>
+                        <td style={{...styles.tableCell, ...styles.colQty}}>{calculateTotalQuantity(ticketSummary)}</td>
+                        <td style={{...styles.tableCell, ...styles.colRate}}></td>
+                        <td style={{ ...styles.tabletotalCell, ...styles.colValue}}>₹{calculateTotal(ticketSummary).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div className='item-start'>
+                <p className='text-black text-[13px]'>PWT : ₹ <span className='text-black text-sm font-semibold'>{pwt}</span></p>
+                <p className='text-black text-[13px]'>Total Payable Amount : ₹ <span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
+                <p className='text-black text-[13px] mt-1'>DC shall be claimed within 30 days</p>
+            </div>
+        </div>
     );
 });
 
-const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt, billno, onPrintSuccess }) => {
+const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt, billno, onPrintSuccess}) => {
     const printableRef = useRef();
     const [currentBillNo, setCurrentBillNo] = useState(billno);
     const [isPrinting, setIsPrinting] = useState(false);
+    const [total, setTotal] = useState(0)
 
     useEffect(() => {
         setCurrentBillNo(billno);
@@ -310,6 +379,8 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
                     name={name}
                     pwt={pwt}
                     billno={isPrinting ? currentBillNo : billno}
+                    total={total}
+                    setTotal={setTotal}
                 />
             </div>
             <div style={{ ...styles.buttonContainer, ...styles.printHide }}>
