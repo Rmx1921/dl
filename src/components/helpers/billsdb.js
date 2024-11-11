@@ -14,13 +14,18 @@ async function initializeUserDB() {
     return db;
 }
 
-async function getBills(limit = 10, offset = 0) {
+async function getBills(limit = 50, offset = 0) {
     const db = await initializeUserDB();
-    const tx = db.transaction(USER_STORE_NAME, 'readonly');
-    const store = tx.objectStore(USER_STORE_NAME);
+
+    const countTx = db.transaction(USER_STORE_NAME, 'readonly');
+    const countStore = countTx.objectStore(USER_STORE_NAME);
+    const totalCount = await countStore.count();
+
+    const dataTx = db.transaction(USER_STORE_NAME, 'readonly');
+    const dataStore = dataTx.objectStore(USER_STORE_NAME);
 
     const bills = [];
-    let cursor = await store.openCursor(null, 'prev');
+    let cursor = await dataStore.openCursor(null, 'prev');
     let skipped = 0;
 
     while (cursor && skipped < offset) {
@@ -33,7 +38,10 @@ async function getBills(limit = 10, offset = 0) {
         cursor = await cursor.continue();
     }
 
-    return bills;
+    return {
+        data: bills,
+        total: totalCount
+    };
 }
 
 async function getAllBillData() {
