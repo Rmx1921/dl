@@ -689,7 +689,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                     type="checkbox"
                                                     checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))}
                                                     onChange={() => handleSelectTicket(null, mainKey)}
-                                                    className="mr-2"
+                                                    className="mr-2 w-11 h-11"
                                                 />
                                                 <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
                                                     {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
@@ -707,7 +707,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                     type="checkbox"
                                                                     checked={tickets.every(t => selectedTickets.has(t))}
                                                                     onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)}
-                                                                    className="mr-2"
+                                                                    className="mr-2 w-5 h-5"
                                                                 />
                                                                 <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}`)} className="flex-grow">
                                                                     {expandedGroups.has(`${mainKey}-${subKey}`) ? '▼' : '▶'}{' '}{subKey}
@@ -722,7 +722,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                                     type="checkbox"
                                                                                     checked={ticketGroup.every(t => selectedTickets.has(t))}
                                                                                     onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
-                                                                                    className="mr-2"
+                                                                                    className="mr-2 w-10 h-10"
                                                                                 />
                                                                                 <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}-${groupIndex}`)}>
                                                                                     {expandedGroups.has(`${mainKey}-${subKey}-${groupIndex}`) ? '▼' : '▶'}{' '}
