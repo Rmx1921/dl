@@ -194,7 +194,7 @@ function createWindow() {
         autoUpdater.quitAndInstall(false, true);
     });
 
-    ipcMain.handle('print', async (event, htmlContent) => {
+    ipcMain.handle('print', async (event,htmlContent) => {
         log.info('Print request received');
         try {
             const win = new BrowserWindow({
@@ -320,7 +320,7 @@ function createWindow() {
                 margins: {
                     marginType: 'none'
                 },
-                pageSize: 'A4',
+                pageSize: 'A6',
                 printSelectionOnly: false,
                 landscape: false
             });
