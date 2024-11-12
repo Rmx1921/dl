@@ -6,6 +6,9 @@ import SlipModal from './SlipModal';
 import { openDB } from 'idb';
 import { FaSearch, FaCalendarAlt, FaTrash} from 'react-icons/fa';
 import { TiTickOutline } from 'react-icons/ti';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
+import { Calendar } from 'lucide-react'; 
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +35,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [filterTicketData,setFilterTicketData]=useState([])
     const [newSelected,setNewSelected]=useState(new Set())
     const [newSelected1, setNewSelected1] = useState(new Set())
+    const [showTicket, setShowTickets] = useState(new Date())
 
     function filterTicketsByRange(tickets, startSuffix, endSuffix) {
         if (startSuffix !== null && endSuffix !== null) {
@@ -190,7 +194,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     }
 
     useEffect(()=>{
-          async function fetchbillno(){
+        async function fetchbillno(showTicket){
             const billno = await getLastBillNumber()
             setBillno(billno)
           }
@@ -204,16 +208,16 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     useEffect(() => {
         if (isOpen) {
-            async function fetchTickets() {
-                const ticketsFromDB = await getAllTicketsFromDB();
+            async function fetchTickets(showTicket) {
+                const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
                 setAllTickets(unsoldTickets);
                 const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => formatDate(ticket.drawDate)))];
                 setDrawDates(uniqueDrawDates);
             }
-            fetchTickets();
+            fetchTickets(showTicket);
         }
-    }, [isOpen]);
+    }, [isOpen, showTicket]);
 
     const handleDrawDateChange = (event) => {
         setSelectedDrawDate(event.target.value);
@@ -582,7 +586,17 @@ const BillingModal = ({ isOpen, onClose }) => {
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                 <div className="bg-white p-6 max-w-5xl w-full flex">
                     <div className="w-1/2 p-4">
-                        <h2 className="text-lg font-bold mb-4">Billing Information</h2>
+                        <div className='flex flex-row justify-between'>
+                            <h2 className="text-lg font-bold mb-4">Billing Information</h2>
+                            <div className="mb-4">
+                                <DatePicker
+                                    selected={showTicket}
+                                    onChange={date => setShowTickets(date)}
+                                    className="w-full px-2 py-2 border border-gray-300"
+                                    dateFormat="dd/MM/yyyy"
+                                />
+                            </div>
+                        </div>
                         <div className='flex flex-row gap-3'>
                             <div className="mb-4 flex-1">
                                 <div className="relative">
@@ -606,6 +620,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     ))}
                                 </select>
                             </div>
+                            
                             <div className='mt-1'>
                                 <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
                             </div>

@@ -5,6 +5,7 @@ import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { FaEdit, FaTrash} from 'react-icons/fa';
+import { ChevronDown } from 'lucide-react';
 
 class Lottery {
     constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier,date) {
@@ -53,6 +54,17 @@ const LotteryTicketGenerator = () => {
     const dropdownRefs = useRef({});
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [drawDate, setDrawDate] = useState(new Date());
+    const [tickets,] = useState([
+        { name: 'WIN-WIN',serial:'W-'},
+        { name: 'AKSHAYA',serial:'AK-'},
+        { name: 'KARUNYA',serial:'KR-'},
+        { name: 'NIRMAL',serial:'NR-'},
+        { name: 'KARUNYA PLUS',serial:'KN-'},
+        { name: 'FIFTY-FIFTY',serial:'FF-'},
+        { name: 'STHREE-SAKTHI',serial:'SS-'}
+    ]);
+    const[showTicket,setShowTickets]=useState(new Date())
+
 
     const inputRefs = useRef([]);
 
@@ -69,9 +81,9 @@ const LotteryTicketGenerator = () => {
     };
 
     useEffect(() => {
-        async function fetchTickets() {
+        async function fetchTickets(showTicket) {
             try {
-                const ticketsFromDB = await getAllTicketsFromDB();
+                const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 if (ticketsFromDB.length === 0) {
                     console.log('No tickets found in the database.');
                     setLotteryTickets([]);
@@ -88,8 +100,8 @@ const LotteryTicketGenerator = () => {
             }
         }
 
-        fetchTickets();
-    }, []);
+        fetchTickets(showTicket);
+    }, [showTicket]);
 
 
     useEffect(() => {
@@ -111,7 +123,7 @@ const LotteryTicketGenerator = () => {
         const firstNum = parseInt(firstNumber, 10);
         const lastNum = parseInt(lastNumber, 10);
         const newTickets = generateLotteryTickets(firstSerial, lastSerial, firstNum, lastNum, ticketname.toLocaleUpperCase(), serialNumber, drawDate);
-        const ticketsFromDB = await getAllTicketsFromDB();
+        const ticketsFromDB = await getAllTicketsFromDB(showTicket);
 
         const filteredNewTickets = newTickets.filter(newTicket => {
             return !ticketsFromDB.some(existingTicket => existingTicket.id === newTicket.id);
@@ -179,22 +191,57 @@ const LotteryTicketGenerator = () => {
         return ticketSummary;
     };
 
+    const handleTicketSelect = (ticket) => {
+        setTicketName(ticket.name);
+        setSerialNumber(ticket.serial);
+    };
+
     return (
         <div className="flex flex-col w-full min-h-screen p-8 bg-[#f0f0f0]">
             <div className="bg-white p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <InputField label="First Serial" value={firstSerial} onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} />
-                    <InputField label="Last Serial" value={lastSerial} onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} />
-                    <InputField label="First Ticket Number" type="number" value={firstNumber} onChange={(e) => setFirstNumber(e.target.value)} />
-                    <InputField label="Last Ticket Number" type="number" value={lastNumber} onChange={(e) => setLastNumber(e.target.value)} />
-                    <InputField label="Lottery Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
-                    <InputField label="Ticket Name" value={ticketname} onChange={(e) => setTicketName(e.target.value)} />
+                    <InputField 
+                    label="First Serial" 
+                    value={firstSerial} 
+                    onChange={(e) => setFirstSerial(e.target.value.toUpperCase().substring(0, 2))} 
+                    />
+                    <InputField 
+                    label="Last Serial" 
+                    value={lastSerial} 
+                    onChange={(e) => setLastSerial(e.target.value.toUpperCase().substring(0, 2))} 
+                    />
+                    <InputField 
+                    label="First Ticket Number" 
+                    type="number" 
+                    value={firstNumber} 
+                    onChange={(e) => setFirstNumber(e.target.value)} 
+                    />
+                    <InputField 
+                    label="Last Ticket Number" 
+                    type="number" 
+                    value={lastNumber} 
+                    onChange={(e) => setLastNumber(e.target.value)} 
+                    />
+                    <DropdownInput
+                        label="Ticket Name"
+                        value={ticketname}
+                        onChange={(e) => setTicketName(e.target.value)}
+                        options={tickets}
+                        onSelect={handleTicketSelect}
+                        displayKey="name"
+                    />
+                    <InputField
+                        label="Lottery Serial Number"
+                        value={serialNumber}
+                        onChange={(e) => setSerialNumber(e.target.value)}
+                    />
                     <div className="mb-4">
                         <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>
                         <DatePicker
                             selected={drawDate}
                             onChange={date => setDrawDate(date)}
                             className="w-full px-4 py-2 border border-gray-300"
+                            dateFormat="dd/MM/yyyy"
                         />
                     </div>
                 </div>
@@ -214,7 +261,17 @@ const LotteryTicketGenerator = () => {
                 </div>
             </div>
             <div className="bg-white p-6 mt-8">
-                <h2 className="text-xl font-bold mb-4">Tickets</h2>
+                <div className='flex flex-row justify-between'>
+                    <h2 className="text-xl font-bold mb-4">Tickets</h2>
+                    <div className="mb-4">
+                        <DatePicker
+                            selected={showTicket}
+                            onChange={date => setShowTickets(date)}
+                            className="w-full px-2 py-2 border border-gray-300"
+                            dateFormat="dd/MM/yyyy"
+                        />
+                    </div>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
@@ -230,7 +287,7 @@ const LotteryTicketGenerator = () => {
                         </thead>
                         <tbody>
                             {Object.entries(TicketsByPrefix()).sort(([, a], [, b]) => b.date - a.date).map(([key, { start, end, count, serials, ticketname, drawDate, identifier, unsoldCount }]) => (
-                                <tr key={key} className={`border-t border-[#5e5f5f]`}>
+                                <tr key={key} className={`border-t`}>
                                     <td className="px-4 py-2">{ticketname}</td>
                                     <td className="px-4 py-2">{start}</td>
                                     <td className="px-4 py-2">{end}</td>
@@ -268,6 +325,59 @@ const LotteryTicketGenerator = () => {
     );
 };
 
+const DropdownInput = ({ label, value, onChange, options, onSelect, displayKey }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="mb-4 relative" ref={dropdownRef}>
+            <label className="block mb-2 font-bold text-gray-700">{label}:</label>
+            <div className="relative">
+                <input
+                    type="text"
+                    value={value}
+                    onChange={onChange}
+                    className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#007bff] pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                >
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                </button>
+            </div>
+            {isOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 shadow-lg">
+                    {options.map((option, index) => (
+                        <div
+                            key={index}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => {
+                                onSelect(option);
+                                setIsOpen(false);
+                            }}
+                        >
+                            {option[displayKey]}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const InputField = React.forwardRef(({ label, type = "text", value, onChange }, ref) => (
     <div className="mb-4">
         <label className="block mb-2 font-bold text-gray-700">{label}:</label>
@@ -276,7 +386,7 @@ const InputField = React.forwardRef(({ label, type = "text", value, onChange }, 
             value={value}
             onChange={onChange}
             ref={ref}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007bff]"
+            className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#007bff]"
         />
     </div>
 ));
