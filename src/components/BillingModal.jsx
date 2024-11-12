@@ -65,7 +65,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     useEffect(()=>{
         const out = filterTicketsByRange(selectedTickets, start, end)
         setPrefixFilter(out)
-    }, [start, end, selectedDrawDate])
+    }, [start, end])
     
     const groupedTicketData = useMemo(() => {
         if (!prefixFilter) return [];
@@ -371,8 +371,8 @@ const BillingModal = ({ isOpen, onClose }) => {
         setNewSelected1(new Set())
         setSelectedDrawDate('')
         setSearchQuery('');
-        setStart(null);
-        setEnd(null);
+        setStart('');
+        setEnd('');
     }
 
     const groupTicketsInFives = (tickets) => {
@@ -581,6 +581,12 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     };
 
+    const handleClose = ()=>{
+        handleReset()
+        setBuyerName('')
+        onClose()
+    }
+    
     return (
         isOpen && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -615,14 +621,14 @@ const BillingModal = ({ isOpen, onClose }) => {
                             <div className="mb-4">
                                 <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300">
                                     <option value="">Draw Date</option>
-                                    {drawDates.map((date, index) => (
+                                    {drawDates.sort().map((date, index) => (
                                         <option key={index} value={date}>{date}</option>
                                     ))}
                                 </select>
                             </div>
                             
-                            <div className='mt-1'>
-                                <button className='bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
+                            <div>
+                                <button className='bg-[#dc3545] h-[40px] hover:bg-[#c82333] text-white font-bold py-2 px-4' onClick={handleReset}><FaTrash /></button>
                             </div>
                         </div>
                         {selectedTickets.size > 0 && selectedDrawDate !== ''  && (
@@ -675,7 +681,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             />
                         </div>
                         <div className='flex flex-row gap-3'>
-                            <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
+                            <button onClick={handleClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
                             {(selectedTickets.size > 0 || newSelected1.size> 0) && buyerName.trim() !== '' &&
                                 <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">show bill slip</button>}
                         </div>
