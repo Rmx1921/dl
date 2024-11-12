@@ -101,7 +101,6 @@ const styles = {
         fontSize: '12px',
         whiteSpace: 'wrap',
         fontWeight: 'bold',
-        overflow: 'hidden',
         textOverflow: 'ellipsis',
     },
     tablegrpCell: {
