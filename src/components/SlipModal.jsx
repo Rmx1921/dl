@@ -1,5 +1,6 @@
 import React, { useRef, forwardRef, useImperativeHandle, useEffect, useState } from 'react';
 import Modal from 'react-modal';
+import Barcode from 'react-barcode';
 
 const modalStyles = {
     overlay: {
@@ -43,7 +44,7 @@ const styles = {
         flex: '1',
         fontSize: '10px',
     },
-    boldText: { 
+    boldText: {
         fontWeight: 'bold',
         fontSize: '11px',
     },
@@ -99,7 +100,7 @@ const styles = {
         fontFamily: 'Courier, monospace',
         fontSize: '12px',
         whiteSpace: 'wrap',
-        fontWeight:'bold',
+        fontWeight: 'bold',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
     },
@@ -171,7 +172,7 @@ const styles = {
     },
 };
 
-const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt, billno,total,setTotal}, ref) => {
+const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt, billno, total, setTotal }, ref) => {
     const contentRef = useRef();
 
     useImperativeHandle(ref, () => ({
@@ -189,18 +190,20 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
     }
     let out = formattedDate(currentDateTime)
 
-    const calculateTotal = (items) => {
-        const output = items.reduce((acc, item) => {
-            return acc + item.groups.reduce((groupAcc, group) => {
-                return groupAcc + group.ranges.reduce((rangeAcc, range) => {
-                    return rangeAcc + range.count * range.price;
+    useEffect(() => {
+        const calculateTotal = (items) => {
+            return items.reduce((acc, item) => {
+                return acc + item.groups.reduce((groupAcc, group) => {
+                    return groupAcc + group.ranges.reduce((rangeAcc, range) => {
+                        return rangeAcc + range.count * range.price;
+                    }, 0);
                 }, 0);
             }, 0);
-        }, 0);
-        setTotal(output)
-        return output
-    };
+        };
 
+        const newTotal = calculateTotal(ticketSummary);
+        setTotal(newTotal);
+    }, [ticketSummary, setTotal]);
 
     const calculatePayable = (item) => {
         return pwt ? total - pwt : total;
@@ -214,7 +217,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                 }, 0);
             }, 0);
         }, 0);
-        return totalQuantity
+        return totalQuantity;
     };
 
     function formatDate(date) {
@@ -222,7 +225,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
     }
 
     return (
-        <div ref={contentRef} id="print-content" style={styles.page}>  
+        <div ref={contentRef} id="print-content" style={styles.page}>
             <div style={styles.header}>Devan Lottery Agency</div>
             <div style={styles.subheader}>Mambaram, Mob: 9497050070, 8848578005</div>
 
@@ -242,39 +245,39 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
             <table style={styles.rangeTable}>
                 <thead>
                     <tr>
-                        <th style={{...styles.tableHeader, ...styles.colNo}}>No</th>
-                        <th style={{ ...styles.drawHeader, ...styles.colDraw}}>Lottery Draw</th>
-                        <th style={{...styles.tableHeader, ...styles.colQty}}>Qty</th>
-                        <th style={{...styles.tableHeader, ...styles.colRate}}>Rate</th>
-                        <th style={{ ...styles.valueHeader, ...styles.colValue}}>Value</th>
+                        <th style={{ ...styles.tableHeader, ...styles.colNo }}>No</th>
+                        <th style={{ ...styles.drawHeader, ...styles.colDraw }}>Lottery Draw</th>
+                        <th style={{ ...styles.tableHeader, ...styles.colQty }}>Qty</th>
+                        <th style={{ ...styles.tableHeader, ...styles.colRate }}>Rate</th>
+                        <th style={{ ...styles.valueHeader, ...styles.colValue }}>Value</th>
                     </tr>
                 </thead>
                 <tbody>
                     {ticketSummary.map((item, index) => (
                         <React.Fragment key={index}>
                             <tr>
-                                <td style={{...styles.tableCell, ...styles.colNo}}>{index + 1}.</td>
-                                <td style={{...styles.tableCell, ...styles.colDraw}}>{item.ticketname} {item.serialNum}-{item.drawDate}</td>
-                                <td style={{...styles.tableCell, ...styles.colQty}}></td>
-                                <td style={{...styles.tableCell, ...styles.colRate}}></td>
-                                <td style={{...styles.tableCell, ...styles.colValue}}></td>
+                                <td style={{ ...styles.tableCell, ...styles.colNo }}>{index + 1}.</td>
+                                <td style={{ ...styles.tableCell, ...styles.colDraw }}>{item.ticketname} {item.serialNum}-{item.drawDate}</td>
+                                <td style={{ ...styles.tableCell, ...styles.colQty }}></td>
+                                <td style={{ ...styles.tableCell, ...styles.colRate }}></td>
+                                <td style={{ ...styles.tableCell, ...styles.colValue }}></td>
                             </tr>
                             {item.groups.map((group, groupIndex) => (
                                 <React.Fragment key={groupIndex}>
                                     <tr>
-                                        <td style={{...styles.tableCell, ...styles.colNo}}></td>
-                                        <td style={{ ...styles.tablegrpCell, ...styles.colDraw}}>({group.series})</td>
-                                        <td style={{...styles.tableCell, ...styles.colQty}}></td>
-                                        <td style={{...styles.tableCell, ...styles.colRate}}></td>
-                                        <td style={{...styles.tableCell, ...styles.colValue}}></td>
+                                        <td style={{ ...styles.tableCell, ...styles.colNo }}></td>
+                                        <td style={{ ...styles.tablegrpCell, ...styles.colDraw }}>({group.series})</td>
+                                        <td style={{ ...styles.tableCell, ...styles.colQty }}></td>
+                                        <td style={{ ...styles.tableCell, ...styles.colRate }}></td>
+                                        <td style={{ ...styles.tableCell, ...styles.colValue }}></td>
                                     </tr>
                                     {group.ranges.map((range, rangeIndex) => (
                                         <tr key={rangeIndex}>
-                                            <td style={{...styles.tableCell, ...styles.colNo}}></td>
-                                            <td style={{ ...styles.tabletkCell, ...styles.colDraw}}>{`${range.startNumber}-${range.endNumber}`}</td>
-                                            <td style={{ ...styles.tableqtyCell, ...styles.colQty}}>{range.count.toString().padStart(3, ' ')}</td>
-                                            <td style={{...styles.tableCell, ...styles.colRate}}>{range.price.toFixed(2)}</td>
-                                            <td style={{...styles.tableCell, ...styles.colValue}}>{(range.count * range.price).toFixed(2)}</td>
+                                            <td style={{ ...styles.tableCell, ...styles.colNo }}></td>
+                                            <td style={{ ...styles.tabletkCell, ...styles.colDraw }}>{`${range.startNumber}-${range.endNumber}`}</td>
+                                            <td style={{ ...styles.tableqtyCell, ...styles.colQty }}>{range.count.toString().padStart(3, ' ')}</td>
+                                            <td style={{ ...styles.tableCell, ...styles.colRate }}>{range.price.toFixed(2)}</td>
+                                            <td style={{ ...styles.tableCell, ...styles.colValue }}>{(range.count * range.price).toFixed(2)}</td>
                                         </tr>
                                     ))}
                                 </React.Fragment>
@@ -285,31 +288,36 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                         <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
                     </tr>
                     <tr>
-                        <td style={{...styles.tableCell, ...styles.colNo}}></td>
-                        <td style={{ ...styles.tabletotalCell, ...styles.colTotal}}>Total</td>
-                        <td style={{...styles.tableCell, ...styles.colQty}}>{calculateTotalQuantity(ticketSummary)}</td>
-                        <td style={{...styles.tableCell, ...styles.colRate}}></td>
-                        <td style={{ ...styles.tabletotalCell, ...styles.colValue}}>₹{calculateTotal(ticketSummary).toFixed(2)}</td>
+                        <td style={{ ...styles.tableCell, ...styles.colNo }}></td>
+                        <td style={{ ...styles.tabletotalCell, ...styles.colTotal }}>Total</td>
+                        <td style={{ ...styles.tableCell, ...styles.colQty }}>{calculateTotalQuantity(ticketSummary)}</td>
+                        <td style={{ ...styles.tableCell, ...styles.colRate }}></td>
+                        <td style={{ ...styles.tabletotalCell, ...styles.colValue }}>₹{total.toFixed(2)}</td>
                     </tr>
                     <tr>
                         <td colSpan="5" style={{ ...styles.tableCell, borderTop: '1px solid black' }}></td>
                     </tr>
                 </tbody>
             </table>
-            <div className='item-start'>
-                <p className='text-black text-[13px]'>PWT : ₹ <span className='text-black text-sm font-semibold'>{pwt}</span></p>
-                <p className='text-black text-[13px]'>Total Payable Amount : ₹ <span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
-                <p className='text-black text-[13px] mt-1'>DC shall be claimed within 30 days</p>
+            <div className='flex flex-row justify-between'>
+                <div>
+                    <p className='text-black text-[13px]'>PWT : ₹ <span className='text-black text-sm font-semibold'>{pwt}</span></p>
+                    <p className='text-black text-[13px]'>Total Payable Amount : ₹ <span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
+                    <p className='text-black text-[13px] mt-1'>DC shall be claimed within 30 days</p>
+                </div>
+                <div>
+                    <Barcode value={billno.toString()} height={30} format="CODE39" displayValue={false} />
+                </div>
             </div>
         </div>
     );
 });
 
-const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt, billno, onPrintSuccess}) => {
+const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, name, pwt, billno, onPrintSuccess }) => {
     const printableRef = useRef();
     const [currentBillNo, setCurrentBillNo] = useState(billno);
     const [isPrinting, setIsPrinting] = useState(false);
-    const [total, setTotal] = useState(0)
+    const [total, setTotal] = useState(0);
 
     useEffect(() => {
         setCurrentBillNo(billno);
