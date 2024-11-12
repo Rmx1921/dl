@@ -304,7 +304,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                     <p className='text-black text-[13px]'>Total Payable Amount : ₹ <span className='text-black text-sm font-semibold'>{calculatePayable(ticketSummary[0]).toFixed(2)}</span></p>
                     <p className='text-black text-[13px] mt-1'>DC shall be claimed within 30 days</p>
                 </div>
-                <div>
+                <div className='mt-5'>
                     <Barcode value={billno.toString()} height={30} format="CODE39" displayValue={false} />
                 </div>
             </div>
