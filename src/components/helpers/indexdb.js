@@ -29,21 +29,18 @@ async function saveTicketsToDB(tickets) {
 
 async function getAllTicketsFromDB(frontendDate) {
     const db = await initializeDB();
-
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const allTickets = await store.getAll();
-    const endDate = new Date(frontendDate);
-
-    const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - 7);
+    const targetDate = new Date(frontendDate);
     const filteredTickets = allTickets.filter(ticket => {
-        const ticketDate = new Date(ticket.date);
-        return ticketDate >= startDate && ticketDate <= endDate;
+        const drawDate = new Date(ticket.drawDate);
+        return drawDate.toDateString() === targetDate.toDateString();
     });
 
     return filteredTickets;
 }
+
 
 
 async function updateTicketInDB(ticket) {
