@@ -64,7 +64,7 @@ const LotteryTicketGenerator = () => {
         { name: 'STHREE-SAKTHI',serial:'SS-'}
     ]);
     const[showTicket,setShowTickets]=useState(new Date())
-    const [totalTickets,setTotalTickets]=useState(1)
+    const [totalTickets,setTotalTickets]=useState(0)
 
 
     const inputRefs = useRef([]);
@@ -193,17 +193,19 @@ const LotteryTicketGenerator = () => {
         return ticketSummary;
     };
 
-    const ticketsByPrefix = useMemo(() => TicketsByPrefix(), []);
+    const ticketsByPrefix = useMemo(() => TicketsByPrefix(), [lotteryTickets]);
 
     const totalCount = useMemo(() => {
         return Object.values(ticketsByPrefix).reduce((acc, item) => acc + item.count, 0);
-    }, [ticketsByPrefix]);
+    }, [ticketsByPrefix, lotteryTickets]);
 
     useEffect(() => {
         if (Object.keys(ticketsByPrefix).length > 0) {
             setTotalTickets(totalCount);
+        }else{
+            setTotalTickets(0);
         }
-    }, [ticketsByPrefix, totalCount]);
+    }, [ticketsByPrefix, totalCount, lotteryTickets]);
 
     const handleTicketSelect = (ticket) => {
         setTicketName(ticket.name);
