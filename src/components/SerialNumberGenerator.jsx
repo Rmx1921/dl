@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB } from '../components/helpers/indexdb'
 import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
@@ -64,6 +64,7 @@ const LotteryTicketGenerator = () => {
         { name: 'STHREE-SAKTHI',serial:'SS-'}
     ]);
     const[showTicket,setShowTickets]=useState(new Date())
+    const [totalTickets,setTotalTickets]=useState(1)
 
 
     const inputRefs = useRef([]);
@@ -139,13 +140,13 @@ const LotteryTicketGenerator = () => {
         }
     };
 
-    const handleUpdateTicket = async (updatedTicket) => {
-        const updatedTickets = lotteryTickets.map(ticket =>
-            ticket.serial === updatedTicket.serial && ticket.number === updatedTicket.number ? updatedTicket : ticket
-        );
-        setLotteryTickets(updatedTickets);
-        await updateTicketInDB(updatedTicket);
-    };
+    // const handleUpdateTicket = async (updatedTicket) => {
+    //     const updatedTickets = lotteryTickets.map(ticket =>
+    //         ticket.serial === updatedTicket.serial && ticket.number === updatedTicket.number ? updatedTicket : ticket
+    //     );
+    //     setLotteryTickets(updatedTickets);
+    //     await updateTicketInDB(updatedTicket);
+    // };
 
     const handleDeleteTicket = async (identifier) => {
         const filteredTickets = lotteryTickets.filter(ticket => ticket.identifier !== identifier);
@@ -162,11 +163,12 @@ const LotteryTicketGenerator = () => {
     
     const TicketsByPrefix = () => {
         const ticketSummary = {};
+        let totalTickets = 0;
 
         lotteryTickets.forEach(ticket => {
             const key = ticket.identifier;
             const serialNumber = ticket.serial + ticket.number.toString().padStart(6, '0');
-
+            totalTickets += 1;
             if (!ticketSummary[key]) {
                 ticketSummary[key] = {
                     start: serialNumber,
@@ -174,6 +176,7 @@ const LotteryTicketGenerator = () => {
                     count: 1,
                     serials: [serialNumber],
                     ticketname: ticket.ticketname,
+                    serialNumber: ticket.serialNumber,
                     drawDate: ticket.drawDate,
                     identifier: ticket.identifier,
                     unsoldCount: ticket.state ? 1 : 0
@@ -187,9 +190,20 @@ const LotteryTicketGenerator = () => {
                 }
             }
         });
-
         return ticketSummary;
     };
+
+    const ticketsByPrefix = useMemo(() => TicketsByPrefix(), []);
+
+    const totalCount = useMemo(() => {
+        return Object.values(ticketsByPrefix).reduce((acc, item) => acc + item.count, 0);
+    }, [ticketsByPrefix]);
+
+    useEffect(() => {
+        if (Object.keys(ticketsByPrefix).length > 0) {
+            setTotalTickets(totalCount);
+        }
+    }, [ticketsByPrefix, totalCount]);
 
     const handleTicketSelect = (ticket) => {
         setTicketName(ticket.name);
@@ -262,7 +276,10 @@ const LotteryTicketGenerator = () => {
             </div>
             <div className="bg-white p-6 mt-8">
                 <div className='flex flex-row justify-between'>
-                    <h2 className="text-xl font-bold mb-4">Tickets</h2>
+                    <div className='flex flex-col gap-2 mb-4'>
+                        <h2 className="text-xl font-bold">Tickets</h2>
+                        <p>Total tickets : <span>{totalTickets}</span></p>
+                    </div>
                     <div className="mb-4">
                         <DatePicker
                             selected={showTicket}
@@ -276,7 +293,9 @@ const LotteryTicketGenerator = () => {
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-[#e9ecef]">
+                                <th className="px-4 py-2 text-left">No</th>
                                 <th className="px-4 py-2 text-left">Ticket Name</th>
+                                <th className="px-4 py-2 text-left">Serial Number</th>
                                 <th className="px-4 py-2 text-left">Start Serial</th>
                                 <th className="px-4 py-2 text-left">End Serial</th>
                                 <th className="px-4 py-2 text-left">Count</th>
@@ -286,9 +305,11 @@ const LotteryTicketGenerator = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {Object.entries(TicketsByPrefix()).sort(([, a], [, b]) => b.date - a.date).map(([key, { start, end, count, serials, ticketname, drawDate, identifier, unsoldCount }]) => (
+                            {Object.entries(TicketsByPrefix()).sort(([, a], [, b]) => b.date - a.date).map(([key, { start, end, count, serialNumber, ticketname, drawDate, identifier, unsoldCount }],index) => (
                                 <tr key={key} className={`border-t`}>
+                                    <td className="px-4 py-2">{index +1}</td>
                                     <td className="px-4 py-2">{ticketname}</td>
+                                    <td className="px-4 py-2">{serialNumber}</td>
                                     <td className="px-4 py-2">{start}</td>
                                     <td className="px-4 py-2">{end}</td>
                                     <td className="px-4 py-2">{count}</td>
