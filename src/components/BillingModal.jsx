@@ -4,11 +4,10 @@ import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
 import { openDB } from 'idb';
-import { FaSearch, FaCalendarAlt, FaTrash} from 'react-icons/fa';
+import { FaSearch, FaTrash} from 'react-icons/fa';
 import { TiTickOutline } from 'react-icons/ti';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { Calendar } from 'lucide-react'; 
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -307,6 +306,7 @@ const BillingModal = ({ isOpen, onClose }) => {
 
     const handleSelectTicket = (ticket, groupKey = null) => {
         if (newSelected.size < 1){
+            console.log('1')
             setSelectedTickets(prevSelected => {
                 const newSelected = new Set(prevSelected);
                 if (groupKey) {
@@ -315,10 +315,13 @@ const BillingModal = ({ isOpen, onClose }) => {
                     if (mainGroup) {
                         let ticketsToToggle;
                         if (groupIndex !== undefined) {
+                            console.log('2')
                             ticketsToToggle = groupTicketsInFives(mainGroup[1].subGroups[subKey])[parseInt(groupIndex)];
                         } else if (subKey) {
+                            console.log('3')
                             ticketsToToggle = mainGroup[1].subGroups[subKey];
                         } else {
+                        console.log('4')
                             ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
                         }
                         const allSelected = ticketsToToggle.every(t => newSelected.has(t));
@@ -343,12 +346,15 @@ const BillingModal = ({ isOpen, onClose }) => {
             setNewSelected(prevSelected => {
                 const newSelected = new Set(prevSelected);
                 if (groupKey) {
+                    console.log(groupKey)
                     const [mainKey, subKey, groupIndex] = groupKey.split('|');
                     const mainGroup = filterTicketData.find(([key]) => key === mainKey);
                     if (mainGroup) {
                         let ticketsToToggle;
                         if (subKey) { 
                             ticketsToToggle = mainGroup[1].subGroups[subKey];
+                        } else {
+                            ticketsToToggle = Object.values(mainGroup[1].subGroups).flat();
                         }
                         const allSelected = ticketsToToggle.every(t => newSelected.has(t));
                         ticketsToToggle.forEach(t => {
@@ -387,41 +393,49 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const createTicketSummary = (selectedTickets, selectedPrice) => {
-        return Array.from(selectedTickets).reduce((acc, ticket) => {
+        const seriesSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
             const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
             const seriesKey = `${ticketname}-${ticket.serialNumber}`;
-            const date = ticket.drawDate;
-            const serialNum = ticket.serialNumber;
 
             if (!acc[seriesKey]) {
                 acc[seriesKey] = {
-                    ticketname: ticketname.split('-')[0],
-                    drawDate: formatDate(date),
-                    serialNum,
-                    ranges: {}
+                    ticketname: ticket.ticketname,
+                    drawDate: formatDate(ticket.drawDate),
+                    serialNum: ticket.serialNumber,
+                    seriesRanges: {}
                 };
             }
 
-            const ticketsInSeries = Array.from(selectedTickets).filter(t =>
-                t.serialNumber === ticket.serialNumber &&
-                t.ticketname === ticket.ticketname
-            );
+            if (!acc[seriesKey].seriesRanges[ticket.serial]) {
+                acc[seriesKey].seriesRanges[ticket.serial] = [];
+            }
+            acc[seriesKey].seriesRanges[ticket.serial].push(ticket.number);
+            return acc;
+        }, {});
 
-            const numbers = ticketsInSeries.map(t => t.number);
-            const findContinuousRanges = (nums) => {
-                if (nums.length === 0) return [];
-
-                const sortedNums = [...nums].sort((a, b) => a - b);
-                const ranges = [];
+        Object.keys(seriesSummary).forEach(seriesKey => {
+            const group = seriesSummary[seriesKey];
+            const allRanges = {};
+            Object.entries(group.seriesRanges).forEach(([series, numbers]) => {
+                const sortedNums = [...numbers].sort((a, b) => a - b);
                 let start = sortedNums[0];
                 let prev = start;
 
                 for (let i = 1; i <= sortedNums.length; i++) {
                     if (i === sortedNums.length || sortedNums[i] > prev + 1) {
-                        ranges.push({
-                            start: start,
-                            end: prev
-                        });
+                        const rangeKey = `${start}-${prev}`;
+                        if (!allRanges[rangeKey]) {
+                            allRanges[rangeKey] = {
+                                startNumber: start.toString(),
+                                endNumber: prev.toString(),
+                                series: {},
+                                serialNum: group.serialNum,
+                                price: Number(selectedPrice)
+                            };
+                        }
+                        allRanges[rangeKey].series[series] =
+                            (prev - start + 1);
+
                         if (i < sortedNums.length) {
                             start = sortedNums[i];
                             prev = start;
@@ -430,32 +444,13 @@ const BillingModal = ({ isOpen, onClose }) => {
                         prev = sortedNums[i];
                     }
                 }
-                return ranges;
-            };
-
-            const continuousRanges = findContinuousRanges(numbers);
-            continuousRanges.forEach(range => {
-                const rangeKey = `${range.start}-${range.end}`;
-                if (!acc[seriesKey].ranges[rangeKey]) {
-                    acc[seriesKey].ranges[rangeKey] = {
-                        startNumber: range.start.toString(),
-                        endNumber: range.end.toString(),
-                        series: {},
-                        serialNum,
-                        price: Number(selectedPrice)
-                    };
-                }
-
-                if (ticket.number >= range.start && ticket.number <= range.end) {
-                    if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
-                        acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
-                    }
-                    acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
-                }
             });
 
-            return acc;
-        }, {});
+            group.ranges = allRanges;
+            delete group.seriesRanges;
+        });
+
+        return seriesSummary;
     };
 
     const processSummaryIntoGroups = (ticketSummary) => {
@@ -470,11 +465,24 @@ const BillingModal = ({ isOpen, onClose }) => {
                         groups.push({
                             start: serial,
                             end: serial,
-                            serials: [serial]
+                            serials: [serial],
+                            startNumber: rangeData.startNumber,
+                            endNumber: rangeData.endNumber
                         });
                     } else {
-                        currentGroup.end = serial;
-                        currentGroup.serials.push(serial);
+                        if (rangeData.startNumber === currentGroup.startNumber &&
+                            rangeData.endNumber === currentGroup.endNumber) {
+                            currentGroup.end = serial;
+                            currentGroup.serials.push(serial);
+                        } else {
+                            groups.push({
+                                start: serial,
+                                end: serial,
+                                serials: [serial],
+                                startNumber: rangeData.startNumber,
+                                endNumber: rangeData.endNumber
+                            });
+                        }
                     }
                     return groups;
                 }, []);
@@ -532,9 +540,11 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const generateSummary = (selectedTickets, selectedPrice) => {
+    return useMemo(() => {
         const summary = createTicketSummary(selectedTickets, selectedPrice);
         const groupedSummary = processSummaryIntoGroups(summary);
         return createFinalSummary(groupedSummary);
+    }, [selectedTickets, selectedPrice]);
     };
 
     const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
@@ -701,7 +711,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                     <div className="w-1/2 p-4 border-l border-gray-200">
                         <h2 className="text-lg font-bold mb-4">Search Results</h2>
                         <div className="max-h-96 overflow-y-auto">
-                            {displayedTickets.length > 0 && newSelected.size< 1 ? (
+                            {displayedTickets.length > 0 && newSelected.size< 1 && filterTicketData.length< 1 ? (
                                 <div>
                                     {displayedTickets.map(([mainKey, groupData]) => (
                                         <div key={mainKey} className="my-2 border border-gray-200 p-2">
