@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useTable, useSortBy, useGlobalFilter, usePagination } from 'react-table';
-import { Search, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +7,7 @@ import { findBills, getBills,saveBills} from './helpers/billsdb';
 import BillEditModal from './BillEditModal';
 import SlipModal from './SlipModal'
 import {useModal} from '../contexts/ModalContext'
+import { generateSummary } from '../utils/groupTickets'
 
 const BillDetails = () => {
     const navigate = useNavigate();
@@ -21,19 +21,23 @@ const BillDetails = () => {
     const [modalIsOpen, setModalIsOpen] = useState(false);
     const [selectedBill, setSelectedBill] = useState(null);
     const [selectedTickets, setSelectedTickets] = useState(new Set());
-    const [buyerName, setBuyerName] = useState('');
-    const [tempBillNo, setTempBillNo] = useState(null);
-    const [pwtPrice, setpwtPrice] = useState(0);
-    const [selectedPrice, setSelectedPrice] = useState(0);
     const [currentPage, setCurrentPage] = useState(0);
-    const [pageSize, setCurrentPageSize] = useState(5);
+    const [pageSize,] = useState(5);
+    const [selectedBillDetails, setSelectedBillDetails] = useState({
+        price: 0,
+        name: '',
+        billNo: null,
+        pwt: 0,
+    });
 
     const handlePrinting = (bill)=>{
         setSelectedTickets(new Set(bill.tickets))
-        setBuyerName(bill.name);
-        setTempBillNo(bill.billno)
-        setSelectedPrice(bill.ticketPrice)
-        setpwtPrice(bill.pwt)
+        setSelectedBillDetails({
+            name: bill.name,
+            billNo: bill.billno,
+            price: bill.ticketPrice,
+            pwt: bill.pwt,
+        });
         setModalIsOpen(true)
     }
 
@@ -57,7 +61,7 @@ const BillDetails = () => {
         }
     };
 
-    const fetchBills = async (page, size) => {
+    const fetchBills = useCallback(async (page, size) => {
         setLoading(true);
         try {
             const result = await getBills(size, page * size);
@@ -67,7 +71,7 @@ const BillDetails = () => {
             console.error('Error fetching bills:', error);
         }
         setLoading(false);
-    };
+    }, []);
 
     const formatDate = (date) => {
         const d = new Date(date);
@@ -96,13 +100,10 @@ const BillDetails = () => {
     }, [currentPage, pageSize]);
 
     const handlePageChange = (newPage) => {
+        if (newPage === currentPage) return;
         setCurrentPage(newPage);
     };
 
-    // const handlePageSizeChange = (newSize) => {
-    //     setCurrentPageSize(newSize);
-    //     setCurrentPage(0);
-    // };
 
     const data = React.useMemo(() => billsData, [billsData]);
     const pageCount = Math.ceil(totalCount / pageSize);
@@ -132,158 +133,7 @@ const BillDetails = () => {
         }
     };
 
-    const createTicketSummary = (selectedTickets, selectedPrice) => {
-        return Array.from(selectedTickets).reduce((acc, ticket) => {
-            const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
-            const seriesKey = `${ticketname}-${ticket.serialNumber}`;
-            const date = ticket.drawDate;
-            const serialNum = ticket.serialNumber;
-
-            if (!acc[seriesKey]) {
-                acc[seriesKey] = {
-                    ticketname: ticketname.split('-')[0],
-                    drawDate: new Date(date).toLocaleDateString(),
-                    serialNum,
-                    ranges: {}
-                };
-            }
-
-            const ticketsInSeries = Array.from(selectedTickets).filter(t =>
-                t.serialNumber === ticket.serialNumber &&
-                t.ticketname === ticket.ticketname
-            );
-
-            const numbers = ticketsInSeries.map(t => t.number);
-            const findContinuousRanges = (nums) => {
-                if (nums.length === 0) return [];
-
-                const sortedNums = [...nums].sort((a, b) => a - b);
-                const ranges = [];
-                let start = sortedNums[0];
-                let prev = start;
-
-                for (let i = 1; i <= sortedNums.length; i++) {
-                    if (i === sortedNums.length || sortedNums[i] > prev + 1) {
-                        ranges.push({
-                            start: start,
-                            end: prev
-                        });
-                        if (i < sortedNums.length) {
-                            start = sortedNums[i];
-                            prev = start;
-                        }
-                    } else {
-                        prev = sortedNums[i];
-                    }
-                }
-                return ranges;
-            };
-
-            const continuousRanges = findContinuousRanges(numbers);
-            continuousRanges.forEach(range => {
-                const rangeKey = `${range.start}-${range.end}`;
-                if (!acc[seriesKey].ranges[rangeKey]) {
-                    acc[seriesKey].ranges[rangeKey] = {
-                        startNumber: range.start.toString(),
-                        endNumber: range.end.toString(),
-                        series: {},
-                        serialNum,
-                        price: Number(selectedPrice)
-                    };
-                }
-
-                if (ticket.number >= range.start && ticket.number <= range.end) {
-                    if (!acc[seriesKey].ranges[rangeKey].series[ticket.serial]) {
-                        acc[seriesKey].ranges[rangeKey].series[ticket.serial] = 0;
-                    }
-                    acc[seriesKey].ranges[rangeKey].series[ticket.serial]++;
-                }
-            });
-
-            return acc;
-        }, {});
-    };
-
-    const processSummaryIntoGroups = (ticketSummary) => {
-        return Object.entries(ticketSummary).map(([key, value]) => {
-            const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
-                const seriesList = Object.keys(rangeData.series).sort();
-                const seriesGroups = seriesList.reduce((groups, serial) => {
-                    const currentGroup = groups[groups.length - 1];
-
-                    if (groups.length === 0 ||
-                        serial.charCodeAt(0) - currentGroup.serials[currentGroup.serials.length - 1].charCodeAt(0) > 1) {
-                        groups.push({
-                            start: serial,
-                            end: serial,
-                            serials: [serial]
-                        });
-                    } else {
-                        currentGroup.end = serial;
-                        currentGroup.serials.push(serial);
-                    }
-                    return groups;
-                }, []);
-
-                seriesGroups.forEach(group => {
-                    const groupKey = `${group.start}-${group.end}`;
-                    if (!acc[groupKey]) {
-                        acc[groupKey] = {
-                            series: group.serials.join(','),
-                            ranges: []
-                        };
-                    }
-                    const count = group.serials.reduce((sum, serial) =>
-                        sum + (rangeData.series[serial] || 0), 0);
-
-                    acc[groupKey].ranges.push({
-                        startNumber: rangeData.startNumber,
-                        endNumber: rangeData.endNumber,
-                        count,
-                        price: rangeData.price
-                    });
-                });
-
-                return acc;
-            }, {});
-
-            return {
-                ticketname: value.ticketname,
-                drawDate: value.drawDate,
-                serialNum: value.serialNum,
-                groups: Object.values(rangeGroups)
-            };
-        });
-    };
-
-    const createFinalSummary = (sortedSummary) => {
-        return sortedSummary
-            .sort((a, b) => {
-                const ticketCompare = a.ticketname.localeCompare(b.ticketname);
-                if (ticketCompare !== 0) return ticketCompare;
-
-                return a.groups[0]?.series.localeCompare(b.groups[0]?.series || '') || 0;
-            })
-            .map(item => ({
-                ...item,
-                serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
-                groups: item.groups.map(group => ({
-                    ...group,
-                    ranges: group.ranges
-                        .sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
-                    totalAmount: group.ranges.reduce((sum, range) =>
-                        sum + (range.count * range.price), 0)
-                }))
-            }));
-    };
-
-    const generateSummary = (selectedTickets, selectedPrice) => {
-        const summary = createTicketSummary(selectedTickets, selectedPrice);
-        const groupedSummary = processSummaryIntoGroups(summary);
-        return createFinalSummary(groupedSummary);
-    };
-
-    const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
+    const finalSortedSummary = generateSummary(selectedTickets, selectedBillDetails.price)
 
     const handleRestBillNumber = ()=>{
         openModal('CANCEL_BUTTON')
@@ -348,7 +198,7 @@ const BillDetails = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {billsData.map((bill) => (
+                            {data.map((bill) => (
                                 <tr key={bill.id} className="border-b hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap">{bill.billno}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{bill.type}</td>
@@ -391,20 +241,6 @@ const BillDetails = () => {
                 <span className="text-sm text-gray-700">
                     Page {currentPage + 1} of {pageCount} | Total Records: {totalCount}
                 </span>
-
-                {/* <select
-                    value={pageSize}
-                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                    className="text-sm text-gray-700 bg-white border rounded-md px-2 py-1"
-                    disabled={loading}
-                >
-                    {[5, 10, 20, 50].map(size => (
-                        <option key={size} value={size}>
-                            Show {size}
-                        </option>
-                    ))}
-                </select> */}
-
                 <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage >= pageCount - 1 || loading}
@@ -429,9 +265,9 @@ const BillDetails = () => {
                     onRequestClose={() => setModalIsOpen(false)}
                     ticketSummary={finalSortedSummary}
                     currentDateTime={new Date()}
-                    name={buyerName}
-                    pwt={pwtPrice}
-                    billno={tempBillNo}
+                    name={selectedBillDetails.name}
+                    pwt={selectedBillDetails.pwt}
+                    billno={selectedBillDetails.billNo}
                     onPrintSuccess={handlePrintSuccess}
                 />
             </>
