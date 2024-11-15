@@ -103,6 +103,14 @@ const styles = {
         fontWeight: 'bold',
         textOverflow: 'ellipsis',
     },
+    tableDraw: {
+        padding: '3px',
+        fontFamily: 'Courier, monospace',
+        fontSize: '12px',
+        whiteSpace: 'wrap',
+        fontWeight: 'bold',
+        textOverflow: 'ellipsis',
+    },
     tablegrpCell: {
         padding: '4px',
         fontFamily: 'Courier, monospace',
@@ -256,7 +264,7 @@ const PrintableContent = forwardRef(({ ticketSummary, currentDateTime, name, pwt
                         <React.Fragment key={index}>
                             <tr>
                                 <td style={{ ...styles.tableCell, ...styles.colNo }}>{index + 1}.</td>
-                                <td style={{ ...styles.tableCell, ...styles.colDraw }}>{item.ticketname} {item.serialNum}-{item.drawDate}</td>
+                                <td style={{ ...styles.tableDraw, ...styles.colDraw }}>{item.ticketname} {item.serialNum}-{item.drawDate}</td>
                                 <td style={{ ...styles.tableCell, ...styles.colQty }}></td>
                                 <td style={{ ...styles.tableCell, ...styles.colRate }}></td>
                                 <td style={{ ...styles.tableCell, ...styles.colValue }}></td>
