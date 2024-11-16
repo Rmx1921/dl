@@ -131,8 +131,8 @@ const LotteryTicketGenerator = () => {
         });
 
         if (filteredNewTickets.length > 0) {
-            // const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
-            // setLotteryTickets(updatedTickets);
+            const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
+            setLotteryTickets(updatedTickets);
             await saveTicketsToDB(filteredNewTickets);
             await getAllTicketsFromDB(showTicket);
             toast.success('Tickets added');
