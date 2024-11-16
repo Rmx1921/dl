@@ -162,7 +162,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             const store = tx.objectStore('ticketsData');
 
             for (const ticket of selectedTickets) {
-                const existingTicket = await store.get(ticket.id);
+                const existingTicket = await store.get(ticket.unique);
                 if (existingTicket) {
                     existingTicket.state = false;
                     await store.put(existingTicket);
@@ -206,7 +206,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     }
 
     useEffect(()=>{
-        async function fetchbillno(showTicket){
+        async function fetchbillno(){
             const billno = await getLastBillNumber()
             setBillno(billno)
           }
@@ -214,7 +214,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     },[])
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && modalIsOpen == false) {
             async function fetchTickets(showTicket) {
                 const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);

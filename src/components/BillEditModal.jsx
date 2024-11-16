@@ -7,12 +7,12 @@ const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
     
     async function updateSelectedTicketsStatus(selectedTickets) {
         try {
-            const db = await openDB('lotteryDB', 1);
-            const tx = db.transaction('tickets', 'readwrite');
-            const store = tx.objectStore('tickets');
+            const db = await openDB('lotteryDB', 2);
+            const tx = db.transaction('ticketsData', 'readwrite');
+            const store = tx.objectStore('ticketsData');
 
             for (const ticket of selectedTickets) {
-                const existingTicket = await store.get(ticket.id);
+                const existingTicket = await store.get(ticket.unique);
                 if (existingTicket) {
                     existingTicket.state = true;
                     await store.put(existingTicket);
