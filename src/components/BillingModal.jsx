@@ -310,7 +310,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     };
 
     const handleBuyerNameChange = (event) => {
-        setBuyerName(event.target.value);
+        setBuyerName(event.target.value.toUpperCase());
     };
 
     const handleLoadMore = () => {
@@ -696,9 +696,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-                    {/* <div className="w-52 p-4 border-l border-gray-200">
+                    <div className="w-52 p-4 border-l border-gray-200">
                         <p>hellow</p>
-                    </div> */}
+                    </div>
                 </div>
             </div>
         )
