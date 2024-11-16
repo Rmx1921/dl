@@ -1,12 +1,12 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'lotteryDB';
-const STORE_NAME = 'tickets';
+const STORE_NAME = 'ticketsData';
 
 async function initializeDB() {
-    const db = await openDB(DB_NAME, 1, {
+    const db = await openDB(DB_NAME, 2, {
         upgrade(db) {
-            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            db.createObjectStore(STORE_NAME, { keyPath: 'unique' });
         },
     });
     return db;
@@ -41,7 +41,13 @@ async function getAllTicketsFromDB(frontendDate) {
     return filteredTickets;
 }
 
-
+async function getAllTickets() {
+    const db = await initializeDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const allTickets = await store.getAll();
+    return allTickets;
+}
 
 async function updateTicketInDB(ticket) {
     const db = await initializeDB();
@@ -63,4 +69,30 @@ async function deleteTicketFromDB(ticketId) {
     await tx.done;
 }
 
-export { initializeDB, saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB };
+async function restoreTickets(tickets) {
+    const db  = await initializeDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    let ticketCount = 0;
+
+    for (const ticket of tickets) {
+        const ticketWithUnique = {
+            ...ticket,
+            date: new Date(ticket.date),
+            drawDate: new Date(ticket.drawDate),
+            unique: `${ticket.serialNumber}-${ticket.serial}-${ticket.number}`
+        };
+
+        console.log('Restoring ticket:', ticketWithUnique);
+        store.put(ticketWithUnique);
+        ticketCount++;
+    }
+
+    console.log('Total tickets processed:', ticketCount);
+
+    await tx.done;
+    return { message: 'Tickets restored successfully.' };
+}
+
+export { initializeDB, saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB, getAllTickets, restoreTickets };
