@@ -257,10 +257,10 @@ const BillingModal = ({ isOpen, onClose }) => {
             const drawDateMatch = drawDate ? formatDate(ticket.drawDate) === drawDate : true;
             return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
-         
+
         if (filteredTickets && queryLowerCase) {
-            const identifierMatch = filteredTickets[0].identifier;
-            filteredTickets= allTickets.filter(ticket => ticket.identifier === identifierMatch);
+            const identifierMatch = filteredTickets[0].number;
+            filteredTickets = allTickets.filter(ticket => ticket.number === identifierMatch);
         }
 
         const groupedTickets = filteredTickets.reduce((acc, ticket) => {
@@ -696,9 +696,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-                    {/* <div className="w-52 p-4 border-l border-gray-200">
+                    <div className="w-52 p-4 border-l border-gray-200">
                         <p>hellow</p>
-                    </div> */}
+                    </div>
                 </div>
             </div>
         )
