@@ -1,7 +1,7 @@
 import React from 'react';
 import { useModal } from '../../contexts/ModalContext';
 import ExportImportModal from '../DataExport';
-import CancelModal from './modal/cancelModal';
+import CancelModal from './modal/CancelModal';
 
 const ModalManager = () => {
     const { modalState } = useModal();
