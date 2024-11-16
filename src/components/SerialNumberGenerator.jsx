@@ -4,8 +4,9 @@ import { toast } from 'react-toastify';
 import BillingModal from './BillingModal';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { FaEdit, FaTrash} from 'react-icons/fa';
+import {FaTrash} from 'react-icons/fa';
 import { ChevronDown } from 'lucide-react';
+import { useModal } from '../contexts/ModalContext'
 
 class Lottery {
     constructor(serial, number, ticketname, serialNumber, state, drawDate, identifier,date) {
@@ -68,6 +69,7 @@ const LotteryTicketGenerator = () => {
     const [totalTickets,setTotalTickets]=useState(0)
 
     const inputRefs = useRef([]);
+    const { openModal} = useModal();
     
     function formatDate(date) {
         return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -142,16 +144,30 @@ const LotteryTicketGenerator = () => {
     };
 
     const handleDeleteTicket = async (identifier) => {
-        const filteredTickets = lotteryTickets.filter(ticket => ticket.identifier !== identifier);
-        setLotteryTickets(filteredTickets);
+        const deleteTicketAction = async () => {
+            try {
+                const filteredTickets = lotteryTickets.filter(ticket => ticket.identifier !== identifier);
+                setLotteryTickets(filteredTickets);
 
-        const ticketsToDelete = lotteryTickets.filter(ticket => ticket.identifier === identifier);
+                const ticketsToDelete = lotteryTickets.filter(ticket => ticket.identifier === identifier);
 
-        for (let ticket of ticketsToDelete) {
-            await deleteTicketFromDB(ticket.unique);
-        }
+                for (let ticket of ticketsToDelete) {
+                    await deleteTicketFromDB(ticket.unique);
+                }
+            } catch (error) {
+                toast.error('Error deleting tickets');
+                throw error;
+            }
+        };
 
-        toast.success('Tickets deleted successfully.');
+        openModal('CANCEL_BUTTON', {
+            title: 'Delete Ticket',
+            message: 'Are you sure you want to delete this ticket?',
+            confirmButtonText: 'Delete',
+            confirmButtonColor: 'red',
+            onConfirm: deleteTicketAction,
+            toastMessage: 'Tickets deleted successfully'
+        });
     };
     
     const TicketsByPrefix = () => {
