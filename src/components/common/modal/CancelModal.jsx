@@ -1,19 +1,26 @@
 import React from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useModal } from '../../../contexts/ModalContext'
-import { resetBillNumber} from '../../helpers/billnodb'
 import { toast } from 'react-toastify';
 
 const CancelModal = () => {
-    const { openModal, closeModal } = useModal();
+    const { modalState, openModal, closeModal } = useModal();
     if (!openModal) return null;
-
-    const resetHelper= async()=>{
-      await resetBillNumber()
-      closeModal()
-      toast.success('Bill Number Reseted')
+   
+    const data = {
+      title: modalState.data.title,
+      message: modalState.data.message,
+      confirmButtonText: modalState.data.confirmButtonText,
+      onConfirm: modalState.data.onConfirm,
+      toastMessage: modalState.data.toastMessage
     }
 
+    const handleAction = async()=>{
+       data.onConfirm()
+      toast.success(data.toastMessage)
+      closeModal()
+    }
+    
   return (
     <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
       <div 
@@ -30,11 +37,11 @@ const CancelModal = () => {
               </div>
               <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                 <h3 className="text-base font-semibold leading-6 text-gray-900">
-                  Reset Bill Number
+                  {data.title}
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500">
-                    Are you sure you want to reset bill numbers?
+                    {data.message}
                   </p>
                 </div>
               </div>
@@ -44,9 +51,9 @@ const CancelModal = () => {
             <button
               type="button"
               className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-              onClick={resetHelper}
+              onClick={handleAction}
             >
-              Reset
+              {data.confirmButtonText}
             </button>
             <button
               type="button"
