@@ -8,6 +8,8 @@ import { FaSearch, FaTrash} from 'react-icons/fa';
 import { TiTickOutline } from 'react-icons/ti';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import { generateSummary } from './../utils/groupTickets'
+import { formatDate } from '../utils/fortmatDate'
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +37,10 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [newSelected,setNewSelected]=useState(new Set())
     const [newSelected1, setNewSelected1] = useState(new Set())
     const [showTicket, setShowTickets] = useState(new Date())
+
+    useEffect(()=>{
+        setSelectedDrawDate(formatDate(showTicket))
+    }, [showTicket])
 
     function filterTicketsByRange(tickets, startSuffix, endSuffix) {
         if (startSuffix !== null && endSuffix !== null) {
@@ -139,14 +145,21 @@ const BillingModal = ({ isOpen, onClose }) => {
         if (start && end) {
             setSelectedTickets(new Set())
             resetFilters()
+        }else{
+            setNewSelected1(prevSelected => {
+                const updatedSet = new Set(prevSelected);
+                selectedTickets.forEach(item => updatedSet.add(item));
+                return updatedSet;
+            });
+            setSelectedTickets(new Set())
         }
     };
 
     async function updateSelectedTicketsStatus(selectedTickets) {
         try {
-            const db = await openDB('lotteryDB', 1);
-            const tx = db.transaction('tickets', 'readwrite');
-            const store = tx.objectStore('tickets');
+            const db = await openDB('lotteryDB', 2);
+            const tx = db.transaction('ticketsData', 'readwrite');
+            const store = tx.objectStore('ticketsData');
 
             for (const ticket of selectedTickets) {
                 const existingTicket = await store.get(ticket.id);
@@ -200,11 +213,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         fetchbillno()
     },[])
 
-    function formatDate(date) {
-        return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-    }
-
-
     useEffect(() => {
         if (isOpen) {
             async function fetchTickets(showTicket) {
@@ -240,14 +248,20 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
 
         const queryLowerCase = query.toLowerCase();
-        const filteredTickets = allTickets.filter(ticket => {
-            const [serialPart, numberPart] = queryLowerCase.split('-');
+        let filteredTickets
+        filteredTickets = allTickets.filter(ticket => {
+            const [serialPart,numberPart] = queryLowerCase.split('-');
             const serialMatch = ticket.serial.toLowerCase().includes(serialPart);
             const numberMatch = numberPart ? ticket.number.toString().startsWith(numberPart) : true;
             const otherFieldsMatch = ticket.id.toLowerCase().includes(queryLowerCase) || ticket.ticketname.toLowerCase().includes(queryLowerCase) || ticket.serialNumber.toLowerCase().includes(queryLowerCase);
             const drawDateMatch = drawDate ? formatDate(ticket.drawDate) === drawDate : true;
             return ((serialMatch && numberMatch) || otherFieldsMatch) && drawDateMatch;
         });
+         
+        if (filteredTickets && queryLowerCase) {
+            const identifierMatch = filteredTickets[0].identifier;
+            filteredTickets= allTickets.filter(ticket => ticket.identifier === identifierMatch);
+        }
 
         const groupedTickets = filteredTickets.reduce((acc, ticket) => {
             const [startSerial, endSerial, startNumber, endNumber, ticketname, serialNumber, drawDate] = ticket.identifier.split('-');
@@ -375,6 +389,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         setSelectedTickets(new Set());
         setNewSelected(new Set())
         setNewSelected1(new Set())
+        setFilterTicketData([])
         setSelectedDrawDate('')
         setSearchQuery('');
         setStart('');
@@ -390,161 +405,6 @@ const BillingModal = ({ isOpen, onClose }) => {
             acc[groupIndex].push(ticket);
             return acc;
         }, []);
-    };
-
-    const createTicketSummary = (selectedTickets, selectedPrice) => {
-        const seriesSummary = Array.from(selectedTickets).reduce((acc, ticket) => {
-            const [, , , , ticketname, , drawDate] = ticket.identifier.split('-');
-            const seriesKey = `${ticketname}-${ticket.serialNumber}`;
-
-            if (!acc[seriesKey]) {
-                acc[seriesKey] = {
-                    ticketname: ticket.ticketname,
-                    drawDate: formatDate(ticket.drawDate),
-                    serialNum: ticket.serialNumber,
-                    seriesRanges: {}
-                };
-            }
-
-            if (!acc[seriesKey].seriesRanges[ticket.serial]) {
-                acc[seriesKey].seriesRanges[ticket.serial] = [];
-            }
-            acc[seriesKey].seriesRanges[ticket.serial].push(ticket.number);
-            return acc;
-        }, {});
-
-        Object.keys(seriesSummary).forEach(seriesKey => {
-            const group = seriesSummary[seriesKey];
-            const allRanges = {};
-            Object.entries(group.seriesRanges).forEach(([series, numbers]) => {
-                const sortedNums = [...numbers].sort((a, b) => a - b);
-                let start = sortedNums[0];
-                let prev = start;
-
-                for (let i = 1; i <= sortedNums.length; i++) {
-                    if (i === sortedNums.length || sortedNums[i] > prev + 1) {
-                        const rangeKey = `${start}-${prev}`;
-                        if (!allRanges[rangeKey]) {
-                            allRanges[rangeKey] = {
-                                startNumber: start.toString(),
-                                endNumber: prev.toString(),
-                                series: {},
-                                serialNum: group.serialNum,
-                                price: Number(selectedPrice)
-                            };
-                        }
-                        allRanges[rangeKey].series[series] =
-                            (prev - start + 1);
-
-                        if (i < sortedNums.length) {
-                            start = sortedNums[i];
-                            prev = start;
-                        }
-                    } else {
-                        prev = sortedNums[i];
-                    }
-                }
-            });
-
-            group.ranges = allRanges;
-            delete group.seriesRanges;
-        });
-
-        return seriesSummary;
-    };
-
-    const processSummaryIntoGroups = (ticketSummary) => {
-        return Object.entries(ticketSummary).map(([key, value]) => {
-            const rangeGroups = Object.entries(value.ranges).reduce((acc, [rangeKey, rangeData]) => {
-                const seriesList = Object.keys(rangeData.series).sort();
-                const seriesGroups = seriesList.reduce((groups, serial) => {
-                    const currentGroup = groups[groups.length - 1];
-
-                    if (groups.length === 0 ||
-                        serial.charCodeAt(0) - currentGroup.serials[currentGroup.serials.length - 1].charCodeAt(0) > 1) {
-                        groups.push({
-                            start: serial,
-                            end: serial,
-                            serials: [serial],
-                            startNumber: rangeData.startNumber,
-                            endNumber: rangeData.endNumber
-                        });
-                    } else {
-                        if (rangeData.startNumber === currentGroup.startNumber &&
-                            rangeData.endNumber === currentGroup.endNumber) {
-                            currentGroup.end = serial;
-                            currentGroup.serials.push(serial);
-                        } else {
-                            groups.push({
-                                start: serial,
-                                end: serial,
-                                serials: [serial],
-                                startNumber: rangeData.startNumber,
-                                endNumber: rangeData.endNumber
-                            });
-                        }
-                    }
-                    return groups;
-                }, []);
-
-                seriesGroups.forEach(group => {
-                    const groupKey = `${group.start}-${group.end}`;
-                    if (!acc[groupKey]) {
-                        acc[groupKey] = {
-                            series: group.serials.join(','),
-                            ranges: []
-                        };
-                    }
-                    const count = group.serials.reduce((sum, serial) =>
-                        sum + (rangeData.series[serial] || 0), 0);
-
-                    acc[groupKey].ranges.push({
-                        startNumber: rangeData.startNumber,
-                        endNumber: rangeData.endNumber,
-                        count,
-                        price: rangeData.price
-                    });
-                });
-
-                return acc;
-            }, {});
-
-            return {
-                ticketname: value.ticketname,
-                drawDate: value.drawDate,
-                serialNum: value.serialNum,
-                groups: Object.values(rangeGroups)
-            };
-        });
-    };
-
-    const createFinalSummary = (sortedSummary) => {
-        return sortedSummary
-            .sort((a, b) => {
-                const ticketCompare = a.ticketname.localeCompare(b.ticketname);
-                if (ticketCompare !== 0) return ticketCompare;
-
-                return a.groups[0]?.series.localeCompare(b.groups[0]?.series || '') || 0;
-            })
-            .map(item => ({
-                ...item,
-                serialNum: item.serialNum.trim().replace(/\s*-\s*/g, '-').replace(/\s+/g, ' '),
-                groups: item.groups.map(group => ({
-                    ...group,
-                    ranges: group.ranges
-                        .sort((a, b) => parseInt(a.startNumber) - parseInt(b.startNumber)),
-                    totalAmount: group.ranges.reduce((sum, range) =>
-                        sum + (range.count * range.price), 0)
-                }))
-            }));
-    };
-
-    const generateSummary = (selectedTickets, selectedPrice) => {
-    return useMemo(() => {
-        const summary = createTicketSummary(selectedTickets, selectedPrice);
-        const groupedSummary = processSummaryIntoGroups(summary);
-        return createFinalSummary(groupedSummary);
-    }, [selectedTickets, selectedPrice]);
     };
 
     const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
@@ -692,7 +552,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                         </div>
                         <div className='flex flex-row gap-3'>
                             <button onClick={handleClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">Close</button>
-                            {(selectedTickets.size > 0 || newSelected1.size> 0) && buyerName.trim() !== '' &&
+                            {(selectedTickets.size > 0 || newSelected1.size> 0 ) && buyerName.trim() !== '' &&
                                 <button onClick={handleOpenmodal} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4">show bill slip</button>}
                         </div>
                         <div>
@@ -738,7 +598,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                     type="checkbox"
                                                                     checked={tickets.every(t => selectedTickets.has(t))}
                                                                     onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)}
-                                                                    className="mr-2 w-5 h-5"
+                                                                    className="mr-2 w-6 h-6"
                                                                 />
                                                                 <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}`)} className="flex-grow">
                                                                     {expandedGroups.has(`${mainKey}-${subKey}`) ? '▼' : '▶'}{' '}{subKey}
@@ -753,7 +613,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                                     type="checkbox"
                                                                                     checked={ticketGroup.every(t => selectedTickets.has(t))}
                                                                                     onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
-                                                                                    className="mr-2 w-10 h-10"
+                                                                                    className="mr-2 w-6 h-6"
                                                                                 />
                                                                                 <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}-${groupIndex}`)}>
                                                                                     {expandedGroups.has(`${mainKey}-${subKey}-${groupIndex}`) ? '▼' : '▶'}{' '}
@@ -768,7 +628,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                                                 type="checkbox"
                                                                                                 checked={selectedTickets.has(ticket)}
                                                                                                 onChange={() => handleSelectTicket(ticket)}
-                                                                                                className="mr-2"
+                                                                                                className="mr-2 w-6 h-6"
                                                                                             />
                                                                                             <span>{ticket.serial}-{ticket.number}</span>
                                                                                         </div>
@@ -836,6 +696,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
+                    {/* <div className="w-52 p-4 border-l border-gray-200">
+                        <p>hellow</p>
+                    </div> */}
                 </div>
             </div>
         )
