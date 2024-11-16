@@ -343,7 +343,7 @@ const SlipModal = ({ isOpen, onRequestClose, ticketSummary, currentDateTime, nam
             console.log('print result:', printResult);
 
             const pdfResult = await window.electronAPI.printToPDF({
-                fileName: `${currentBillNo}.pdf`,
+                fileName: `${name}_${currentBillNo}.pdf`,
                 htmlContent: htmlContent
             });
             console.log('printToPDF result:', pdfResult);
