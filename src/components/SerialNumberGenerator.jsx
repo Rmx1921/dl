@@ -18,6 +18,7 @@ class Lottery {
         this.drawDate = drawDate;
         this.identifier = identifier;
         this.date= date
+        this.unique = `${serialNumber}-${serial}-${number}`
     }
 }
 
@@ -66,9 +67,8 @@ const LotteryTicketGenerator = () => {
     const[showTicket,setShowTickets]=useState(new Date())
     const [totalTickets,setTotalTickets]=useState(0)
 
-
     const inputRefs = useRef([]);
-
+    
     function formatDate(date) {
         return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     }
@@ -78,32 +78,32 @@ const LotteryTicketGenerator = () => {
     };
 
     const closeBillingModal = () => {
+        fetchTickets(showTicket);
         setIsBillingModalOpen(false);
     };
 
-    useEffect(() => {
-        async function fetchTickets(showTicket) {
-            try {
-                const ticketsFromDB = await getAllTicketsFromDB(showTicket);
-                if (ticketsFromDB.length === 0) {
-                    console.log('No tickets found in the database.');
-                    setLotteryTickets([]);
-                    return;
-                }
-                const parsedTickets = ticketsFromDB.map(ticket => ({
-                    ...ticket,
-                    drawDate: new Date(ticket.drawDate)
-                }));
-                setLotteryTickets(parsedTickets);
-            } catch (error) {
-                console.error('Error fetching tickets:', error);
+    async function fetchTickets(showTicket) {
+        try {
+            const ticketsFromDB = await getAllTicketsFromDB(showTicket);
+            if (ticketsFromDB.length === 0) {
+                console.log('No tickets found in the database.');
                 setLotteryTickets([]);
+                return;
             }
+            const parsedTickets = ticketsFromDB.map(ticket => ({
+                ...ticket,
+                drawDate: new Date(ticket.drawDate)
+            }));
+            setLotteryTickets(parsedTickets);
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+            setLotteryTickets([]);
         }
+    }
 
+    useEffect(() => {
         fetchTickets(showTicket);
     }, [showTicket]);
-
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -127,26 +127,19 @@ const LotteryTicketGenerator = () => {
         const ticketsFromDB = await getAllTicketsFromDB(showTicket);
 
         const filteredNewTickets = newTickets.filter(newTicket => {
-            return !ticketsFromDB.some(existingTicket => existingTicket.id === newTicket.id);
+            return !ticketsFromDB.some(existingTicket => existingTicket.identifier === newTicket.identifier);
         });
 
         if (filteredNewTickets.length > 0) {
-            const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
-            setLotteryTickets(updatedTickets);
+            // const updatedTickets = [...lotteryTickets, ...filteredNewTickets];
+            // setLotteryTickets(updatedTickets);
             await saveTicketsToDB(filteredNewTickets);
+            await getAllTicketsFromDB(showTicket);
             toast.success('Tickets added');
         } else {
             toast.error('Some tickets are already existing in the specified range');
         }
     };
-
-    // const handleUpdateTicket = async (updatedTicket) => {
-    //     const updatedTickets = lotteryTickets.map(ticket =>
-    //         ticket.serial === updatedTicket.serial && ticket.number === updatedTicket.number ? updatedTicket : ticket
-    //     );
-    //     setLotteryTickets(updatedTickets);
-    //     await updateTicketInDB(updatedTicket);
-    // };
 
     const handleDeleteTicket = async (identifier) => {
         const filteredTickets = lotteryTickets.filter(ticket => ticket.identifier !== identifier);
@@ -155,7 +148,7 @@ const LotteryTicketGenerator = () => {
         const ticketsToDelete = lotteryTickets.filter(ticket => ticket.identifier === identifier);
 
         for (let ticket of ticketsToDelete) {
-            await deleteTicketFromDB(ticket.id);
+            await deleteTicketFromDB(ticket.unique);
         }
 
         toast.success('Tickets deleted successfully.');
@@ -322,12 +315,6 @@ const LotteryTicketGenerator = () => {
                                     )}
                                     <td className="px-4 py-2">{formatDate(drawDate)}</td>
                                     <td className="px-4 py-2 flex items-center space-x-2">
-                                        {/* <button
-                                            onClick={() => handleUpdateTicket(key)}
-                                            className="bg-[#007bff] hover:bg-[#0056b3] text-white font-bold py-1 px-2 rounded text-sm"
-                                        >
-                                            <FaEdit />
-                                        </button> */}
                                         {unsoldCount !== 0 && (
                                             <button
                                                 onClick={() => handleDeleteTicket(identifier)}
