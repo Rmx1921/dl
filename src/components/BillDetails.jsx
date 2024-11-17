@@ -88,7 +88,8 @@ const BillDetails = () => {
             tickets: Array.from(bill.tickets),
             pwt: bill.pwt,
             ticketPrice: bill?.ticketPrice,
-            type:bill?.type
+            type:bill?.type,
+            totalPayable: bill?.totalPayable
         }));
         setBillsData(processed);
     };
@@ -182,7 +183,8 @@ const BillDetails = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Payable</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Print</th>
                             </tr>
@@ -195,6 +197,7 @@ const BillDetails = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">{bill.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{bill.date}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{bill.totalAmount}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{bill.totalPayable}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <button
                                             onClick={() => handleEdit(bill)}
