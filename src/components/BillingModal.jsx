@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getAllTicketsFromDB } from '../components/helpers/indexdb';
+import React, { useState, useEffect, useMemo} from 'react';
+import { getAllTicketsFromDB, updateSelectedTicketsStatus } from '../components/helpers/indexdb';
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
@@ -19,7 +19,6 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
     const [ticketsToShow, setTicketsToShow] = useState(20);
-    const [drawDates, setDrawDates] = useState([]);
     const [selectedDrawDate, setSelectedDrawDate] = useState('');
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -155,55 +154,44 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     };
 
-    async function updateSelectedTicketsStatus(selectedTickets) {
-        try {
-            const db = await openDB('lotteryDB', 2);
-            const tx = db.transaction('ticketsData', 'readwrite');
-            const store = tx.objectStore('ticketsData');
-
-            for (const ticket of selectedTickets) {
-                const existingTicket = await store.get(ticket.unique);
-                if (existingTicket) {
-                    existingTicket.state = false;
-                    await store.put(existingTicket);
-                }
-            }
-
-            await tx.done;
-            console.log('Selected tickets status updated successfully');
-        } catch (error) {
-            console.error('Error updating ticket status:', error);
-        }
-    }
-
-    const calculateTotal = (item) => {
-        const total = item.groups.reduce((acc, group) => {
-            return acc + group.ranges.reduce((groupAcc, range) => {
-                return groupAcc + range.count * range.price;
+    const calculateTotal = (items) => {
+        return items.reduce((acc, item) => {
+            return acc + item.groups.reduce((groupAcc, group) => {
+                return groupAcc + group.ranges.reduce((rangeAcc, range) => {
+                    return rangeAcc + range.count * range.price;
+                }, 0);
             }, 0);
         }, 0);
-        return pwtPrice ? total - pwtPrice : total;
     };
 
-    const handleBillsave = async(ticketData,billNo, buyerName, pwtPrice, currentDateTime)=>{
-       try {
-           let total = calculateTotal(finalSortedSummary[0])
-            let saveData = {
-                type:'Original',
+    const handleBillsave = async (ticketData, billNo, buyerName, pwtPrice, currentDateTime) => {
+        try {
+            if (!finalSortedSummary || !selectedPrice) {
+                throw new Error('Required data is missing: finalSortedSummary or selectedPrice');
+            }
+
+            const totalOut = calculateTotal(finalSortedSummary);
+            const totalPay = pwtPrice ? totalOut - pwtPrice : totalOut;
+
+            const saveData = {
+                type: 'Original',
                 billno: billNo,
                 name: buyerName,
-                date:currentDateTime,
+                date: currentDateTime,
                 tickets: ticketData,
-                pwt : pwtPrice,
-                totalAmount: total.toFixed(2),
-                ticketPrice: selectedPrice
-            }
-            await saveBills (saveData)
-           console.log('Bill data saved successfully');
-       } catch (error) {
-        console.error('Error saving the Bill data',error)
-       }
-    }
+                pwt: pwtPrice,
+                totalAmount: totalOut.toFixed(2),
+                ticketPrice: selectedPrice,
+                totalPayable: totalPay.toFixed(2),
+                claimStatus: false
+            };
+            await saveBills(saveData);
+
+            console.log('Bill data saved successfully');
+        } catch (error) {
+            console.error('Error saving the Bill data:', error);
+        }
+    };
 
     useEffect(()=>{
         async function fetchbillno(){
@@ -219,8 +207,8 @@ const BillingModal = ({ isOpen, onClose }) => {
                 const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
                 setAllTickets(unsoldTickets);
-                const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => formatDate(ticket.drawDate)))];
-                setDrawDates(uniqueDrawDates);
+                // const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => formatDate(ticket.drawDate)))];
+                // setDrawDates(uniqueDrawDates);
             }
             fetchTickets(showTicket);
         }
@@ -309,15 +297,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         setSearchQuery(value);
     };
 
-    const handleBuyerNameChange = (event) => {
-        setBuyerName(event.target.value.toUpperCase());
-    };
-
-    const handleLoadMore = () => {
-        setTicketsToShow(prevTicketsToShow => prevTicketsToShow + 20);
-        setDisplayedTickets(searchResults.slice(0, ticketsToShow + 20));
-    };
-
     const handleSelectTicket = (ticket, groupKey = null) => {
         if (newSelected.size < 1){
             console.log('1')
@@ -390,7 +369,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         setNewSelected(new Set())
         setNewSelected1(new Set())
         setFilterTicketData([])
-        setSelectedDrawDate('')
+        // setSelectedDrawDate('')
         setSearchQuery('');
         setStart('');
         setEnd('');
@@ -407,15 +386,9 @@ const BillingModal = ({ isOpen, onClose }) => {
         }, []);
     };
 
-    const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
-
     const handlePriceChange = (e) => {
         setSelectedPrice(Number(e.target.value));
     };
-
-    const handleNewprice = () => {
-        setNewprice(!newprice)
-    }
 
     const handlesetprice = (e) => {
         let price = Number(e.target.value);
@@ -454,8 +427,12 @@ const BillingModal = ({ isOpen, onClose }) => {
     const handleClose = ()=>{
         handleReset()
         setBuyerName('')
+        setShowTickets(new Date())
+        setSelectedDrawDate('')
         onClose()
     }
+
+    const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
     
     return (
         isOpen && (
@@ -464,14 +441,14 @@ const BillingModal = ({ isOpen, onClose }) => {
                     <div className="w-1/2 p-4">
                         <div className='flex flex-row justify-between'>
                             <h2 className="text-lg font-bold mb-4">Billing Information</h2>
-                            <div className="mb-4">
+                            {/* <div className="mb-4">
                                 <DatePicker
                                     selected={showTicket}
                                     onChange={date => setShowTickets(date)}
-                                    className="w-full px-2 py-2 border border-gray-300"
+                                    className="w-28 px-2 py-2 border border-gray-300 bg-yellow-200"
                                     dateFormat="dd/MM/yyyy"
                                 />
-                            </div>
+                            </div> */}
                         </div>
                         <div className='flex flex-row gap-3'>
                             <div className="mb-4 flex-1">
@@ -489,12 +466,12 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 </div>
                             </div>
                             <div className="mb-4">
-                                <select value={selectedDrawDate} onChange={handleDrawDateChange} className="w-full px-4 py-2 border border-gray-300">
-                                    <option value="">Draw Date</option>
-                                    {drawDates.sort().map((date, index) => (
-                                        <option key={index} value={date}>{date}</option>
-                                    ))}
-                                </select>
+                                <DatePicker
+                                    selected={showTicket}
+                                    onChange={date => setShowTickets(date)}
+                                    className="w-28 px-2 py-2 border border-gray-300"
+                                    dateFormat="dd/MM/yyyy"
+                                />
                             </div>
                             
                             <div>
@@ -515,7 +492,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             </div>
                         )}
                         <div className="mb-4">
-                            <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={handleBuyerNameChange} className="w-full px-4 py-2 border border-gray-300" />
+                            <input type="text" placeholder="Enter Buyer's Name" value={buyerName} onChange={(event) => setBuyerName(event.target.value.toUpperCase())} className="w-full px-4 py-2 border border-gray-300" />
                         </div>
                         <div className="flex gap-2 mb-4">
                             {newprice ? (
@@ -538,7 +515,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                     ))}
                                 </select>
                             )}
-                            <button onClick={handleNewprice} className="px-4 py-2 text-black border font-bold hover:bg-blue-200 hover:text-white">
+                            <button onClick={() => setNewprice(!newprice)} className="px-4 py-2 text-black border font-bold hover:bg-blue-200 hover:text-white">
                                 +
                             </button>
                         </div>
@@ -696,9 +673,9 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-                    <div className="w-52 p-4 border-l border-gray-200">
+                    {/* <div className="w-52 p-4 border-l border-gray-200">
                         <p>hellow</p>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         )
