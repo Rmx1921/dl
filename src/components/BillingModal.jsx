@@ -3,13 +3,13 @@ import { getAllTicketsFromDB, updateSelectedTicketsStatus } from '../components/
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
 import SlipModal from './SlipModal';
-import { openDB } from 'idb';
 import { FaSearch, FaTrash} from 'react-icons/fa';
 import { TiTickOutline } from 'react-icons/ti';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { generateSummary } from './../utils/groupTickets'
 import { formatDate } from '../utils/fortmatDate'
+import SelectedTickets from './SelectedTickets'
 
 const BillingModal = ({ isOpen, onClose }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -18,7 +18,7 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [displayedTickets, setDisplayedTickets] = useState([]);
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [buyerName, setBuyerName] = useState('');
-    const [ticketsToShow, setTicketsToShow] = useState(20);
+    const [ticketsToShow, setTicketsToShow] = useState(50);
     const [selectedDrawDate, setSelectedDrawDate] = useState('');
     const [expandedGroups, setExpandedGroups] = useState(new Set());
     const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -57,14 +57,6 @@ const BillingModal = ({ isOpen, onClose }) => {
             return null;
         }
     }
-
-    const handleStart = (event)=>{
-        setStart(event.target.value)
-    }
-
-    const handleEnd = (event) => {
-        setEnd(event.target.value);
-    };
 
     useEffect(()=>{
         const out = filterTicketsByRange(selectedTickets, start, end)
@@ -207,17 +199,10 @@ const BillingModal = ({ isOpen, onClose }) => {
                 const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
                 setAllTickets(unsoldTickets);
-                // const uniqueDrawDates = [...new Set(unsoldTickets.map(ticket => formatDate(ticket.drawDate)))];
-                // setDrawDates(uniqueDrawDates);
             }
             fetchTickets(showTicket);
         }
     }, [isOpen, showTicket]);
-
-    // const handleDrawDateChange = (event) => {
-    //     setSelectedDrawDate(event.target.value);
-    //     searchTickets(searchQuery, event.target.value);
-    // };
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -249,8 +234,9 @@ const BillingModal = ({ isOpen, onClose }) => {
         });
 
         if (filteredTickets && queryLowerCase) {
-            const identifierMatch = filteredTickets[0].number;
-            filteredTickets = allTickets.filter(ticket => ticket.number === identifierMatch);
+            const identifierMatch = filteredTickets[0]?.identifier;
+            const parts = identifierMatch.split('-').slice(2, 9).join('-');
+            filteredTickets = allTickets.filter(ticket => ticket.identifier.split('-').slice(2, 9).join('-') === parts);
         }
 
         const groupedTickets = filteredTickets.reduce((acc, ticket) => {
@@ -371,7 +357,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         setNewSelected(new Set())
         setNewSelected1(new Set())
         setFilterTicketData([])
-        // setSelectedDrawDate('')
         setSearchQuery('');
         setStart('');
         setEnd('');
@@ -387,19 +372,6 @@ const BillingModal = ({ isOpen, onClose }) => {
             return acc;
         }, []);
     };
-
-    const handlePriceChange = (e) => {
-        setSelectedPrice(Number(e.target.value));
-    };
-
-    const handlesetprice = (e) => {
-        let price = Number(e.target.value);
-        setSelectedPrice(price);
-    }
-
-    const handlepwtprice = (e) => {
-        setpwtPrice(Number(e.target.value))
-    }
 
     const handleOpenmodal = () => {
         if(newSelected1.size>0){
@@ -434,23 +406,31 @@ const BillingModal = ({ isOpen, onClose }) => {
         onClose()
     }
 
+    const handleRemoveSelectedTickets = (ticketsToRemove) => {
+        if (newSelected1.size > 0) {
+            setNewSelected1(prevSelected => {
+                const updatedSet = new Set(prevSelected);
+                ticketsToRemove.forEach(ticket => updatedSet.delete(ticket));
+                return updatedSet;
+            });
+        } else {
+            setSelectedTickets(prevSelected => {
+                const updatedSet = new Set(prevSelected);
+                ticketsToRemove.forEach(ticket => updatedSet.delete(ticket));
+                return updatedSet;
+            });
+        }
+    };
+
     const finalSortedSummary = generateSummary(selectedTickets, selectedPrice)
     
     return (
         isOpen && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                <div className="bg-white p-6 max-w-5xl w-full flex">
-                    <div className="w-1/2 p-4">
+                <div className="bg-white p-6 max-w-7xl w-full flex">
+                    <div className="w-36% pt-3 pb-3 pr-3">
                         <div className='flex flex-row justify-between'>
                             <h2 className="text-lg font-bold mb-4">Billing Information</h2>
-                            {/* <div className="mb-4">
-                                <DatePicker
-                                    selected={showTicket}
-                                    onChange={date => setShowTickets(date)}
-                                    className="w-28 px-2 py-2 border border-gray-300 bg-yellow-200"
-                                    dateFormat="dd/MM/yyyy"
-                                />
-                            </div> */}
                         </div>
                         <div className='flex flex-row gap-3'>
                             <div className="mb-4 flex-1">
@@ -483,10 +463,10 @@ const BillingModal = ({ isOpen, onClose }) => {
                         {selectedTickets.size > 0 && selectedDrawDate !== ''  && (
                             <div className='flex flex-row gap-3'>
                                 <div className="mb-4">
-                                    <input type="text" placeholder="Start number" value={start} onChange={handleStart} className="w-full px-4 py-2 border border-gray-300" />
+                                    <input type="text" placeholder="Start number" value={start} onChange={(event) => setStart(event.target.value)} className="w-full px-4 py-2 border border-gray-300" />
                                 </div>
                                 <div className="mb-4">
-                                    <input type="text" placeholder="End number" value={end} onChange={handleEnd} className="w-full px-4 py-2 border border-gray-300" />
+                                    <input type="text" placeholder="End number" value={end} onChange={(event)=>setEnd(event.target.value)} className="w-full px-4 py-2 border border-gray-300" />
                                 </div>
                                 <div className=''>
                                     <button className='bg-[#1a923e] hover:bg-[#1a923e] text-white font-bold py-3 px-3' onClick={handleFilter}><TiTickOutline /></button>
@@ -501,13 +481,13 @@ const BillingModal = ({ isOpen, onClose }) => {
                                 <input
                                     type='Number'
                                     placeholder='Enter Ticket Price'
-                                    onChange={(e) => handlesetprice(e)}
+                                    onChange={(e) => setSelectedPrice(Number(e.target.value))}
                                     className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             ) : (
                                 <select
                                     value={selectedPrice}
-                                    onChange={handlePriceChange}
+                                        onChange={() => setSelectedPrice(Number(e.target.value))}
                                     className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     {ticketprice.map((price, index) => (
@@ -525,7 +505,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             <input
                                 type='Number'
                                 placeholder='Price winning ticket'
-                                onChange={(e) => handlepwtprice(e)}
+                                onChange={(e) => setpwtPrice(Number(e.target.value))}
                                 className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -547,7 +527,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             />
                         </div>
                     </div>
-                    <div className="w-1/2 p-4 border-l border-gray-200">
+                    <div className="w-32% p-4 border-l border-gray-200">
                         <h2 className="text-lg font-bold mb-4">Search Results</h2>
                         <div className="max-h-96 overflow-y-auto">
                             {displayedTickets.length > 0 && newSelected.size< 1 && filterTicketData.length< 1 ? (
@@ -559,7 +539,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                     type="checkbox"
                                                     checked={Object.values(groupData.subGroups).flat().every(t => selectedTickets.has(t))}
                                                     onChange={() => handleSelectTicket(null, mainKey)}
-                                                    className="mr-2 w-11 h-11"
+                                                    className="mr-2 w-6 h-6"
                                                 />
                                                 <span onClick={() => handleGroupExpand(mainKey)} className="flex-grow">
                                                     {expandedGroups.has(mainKey) ? '▼' : '▶'}{' '}{mainKey}
@@ -628,15 +608,16 @@ const BillingModal = ({ isOpen, onClose }) => {
                                         <button onClick={handleLoadMore} className="text-blue-500 hover:text-blue-700 cursor-pointer mt-2">Load More</button>
                                     )}
                                 </div>
-                            ) : (
-                                    prefixFilter && prefixFilter.length > 1 ? (
+                            ) : (prefixFilter && prefixFilter.length > 1 ? (
                                     <div>
                                             {filterTicketData.map(([mainKey, groupData]) => (
                                                 <div key={mainKey} className="my-2 border border-gray-200 p-2">
                                                     <div className="flex items-center cursor-pointer">
                                                         <input
                                                             type="checkbox"
-                                                            checked={Object.values(groupData.subGroups).flat().every(t => newSelected.has(t))}
+                                                            checked={Object.values(groupData.subGroups)
+                                                                .flat()
+                                                                .every(t => newSelected.has(t))}
                                                             onChange={() => handleSelectTicket(null, mainKey)}
                                                             className="mr-2"
                                                         />
@@ -655,7 +636,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={tickets.every(t => newSelected.has(t))}
-                                                                            onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}|${groupIndex}`)}
+                                                                            onChange={() => handleSelectTicket(null, `${mainKey}|${subKey}`)}
                                                                             className="mr-2"
                                                                         />
                                                                         <span onClick={() => handleGroupExpand(`${mainKey}-${subKey}-${groupIndex}`)} className="flex-grow">
@@ -675,9 +656,12 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-                    {/* <div className="w-52 p-4 border-l border-gray-200">
-                        <p>hellow</p>
-                    </div> */}
+                    <div className="w-64 p-4 border-l border-gray-200">
+                        <SelectedTickets
+                            tickets={newSelected1.size > 0 ? newSelected1 : selectedTickets}
+                            onRemove={handleRemoveSelectedTickets}
+                        />
+                    </div>
                 </div>
             </div>
         )
