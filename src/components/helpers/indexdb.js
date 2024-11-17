@@ -95,4 +95,22 @@ async function restoreTickets(tickets) {
     return { message: 'Tickets restored successfully.' };
 }
 
-export { initializeDB, saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB, getAllTickets, restoreTickets };
+async function updateSelectedTicketsStatus(selectedTickets) {
+    const db = await initializeDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    for (const ticket of selectedTickets) {
+        const existingTicket = await store.get(ticket.unique);
+        if (existingTicket) {
+            existingTicket.state = false;
+            store.put(existingTicket);
+        }
+    }
+
+    await tx.done;
+    return { message: 'Selected tickets status updated successfully.' };
+}
+
+
+export { initializeDB, saveTicketsToDB, getAllTicketsFromDB, updateTicketInDB, deleteTicketFromDB, getAllTickets, restoreTickets, updateSelectedTicketsStatus };
