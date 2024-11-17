@@ -214,19 +214,21 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     }, [isOpen, showTicket]);
 
-    const handleDrawDateChange = (event) => {
-        setSelectedDrawDate(event.target.value);
-        searchTickets(searchQuery, event.target.value);
-    };
+    // const handleDrawDateChange = (event) => {
+    //     setSelectedDrawDate(event.target.value);
+    //     searchTickets(searchQuery, event.target.value);
+    // };
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             if (allTickets.length > 0) {
                 searchTickets(searchQuery, selectedDrawDate);
+            }else{
+                setDisplayedTickets([])
             }
         }, 300);
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, allTickets, selectedDrawDate]);
+    }, [searchQuery, allTickets, selectedDrawDate, showTicket]);
 
     const searchTickets = (query, drawDate) => {
         if (query.trim() === '' && !drawDate) {
