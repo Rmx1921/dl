@@ -38,12 +38,4 @@ async function generateNewBillNumber() {
     return newBillNumber;
 }
 
-async function resetBillNumber() {
-    const db = await initializeUserDB();
-    const tx = db.transaction(USER_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(USER_STORE_NAME);
-    await store.put({ id: 1, billNumber: 1 });
-    await tx.done;
-}
-
-export { generateNewBillNumber, getLastBillNumber, saveBillNumber, resetBillNumber };
+export { generateNewBillNumber, getLastBillNumber, saveBillNumber };
