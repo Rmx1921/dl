@@ -88,7 +88,6 @@ const LotteryTicketGenerator = () => {
         try {
             const ticketsFromDB = await getAllTicketsFromDB(showTicket);
             if (ticketsFromDB.length === 0) {
-                console.log('No tickets found in the database.');
                 setLotteryTickets([]);
                 return;
             }
@@ -250,7 +249,7 @@ const LotteryTicketGenerator = () => {
                     <DropdownInput
                         label="Ticket Name"
                         value={ticketname}
-                        onChange={(e) => setTicketName(e.target.value)}
+                        onChange={(e) => setTicketName(e.target.value.toUpperCase())}
                         options={tickets}
                         onSelect={handleTicketSelect}
                         displayKey="name"
@@ -258,14 +257,14 @@ const LotteryTicketGenerator = () => {
                     <InputField
                         label="Lottery Serial Number"
                         value={serialNumber}
-                        onChange={(e) => setSerialNumber(e.target.value)}
+                        onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
                     />
                     <div className="mb-4">
                         <label className="block mb-2 font-bold text-gray-700">Draw Date:</label>
                         <DatePicker
                             selected={drawDate}
                             onChange={date => setDrawDate(date)}
-                            className="w-full px-4 py-2 border border-gray-300"
+                            className="w-32 px-4 py-2 border border-gray-300"
                             dateFormat="dd/MM/yyyy"
                         />
                     </div>
@@ -295,7 +294,7 @@ const LotteryTicketGenerator = () => {
                         <DatePicker
                             selected={showTicket}
                             onChange={date => setShowTickets(date)}
-                            className="w-full px-2 py-2 border border-gray-300"
+                            className="w-36 px-2 py-2 border border-black"
                             dateFormat="dd/MM/yyyy"
                         />
                     </div>
@@ -331,7 +330,7 @@ const LotteryTicketGenerator = () => {
                                     )}
                                     <td className="px-4 py-2">{formatDate(drawDate)}</td>
                                     <td className="px-4 py-2 flex items-center space-x-2">
-                                        {unsoldCount !== 0 && (
+                                        {(unsoldCount == 0 || unsoldCount !== 0) && (
                                             <button
                                                 onClick={() => handleDeleteTicket(identifier)}
                                                 className="bg-[#dc3545] hover:bg-[#c82333] text-white font-bold py-1 px-2 rounded text-sm"
