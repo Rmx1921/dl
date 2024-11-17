@@ -117,20 +117,27 @@ const BillEditModal = ({ isOpen, onClose, billData, onUpdateBill }) => {
         });
     };
      
-    const calculateTotal = (item,pwt,price) => {
+    const calculateTotal = (item,price) => {
        let total = item.length * price;
-        return pwt ? total - pwt : total;
+        return total
+    };
+
+    const totalPayable = (totalprice,pwt) => {
+        let total = totalprice - pwt
+        return total
     };
    
     const handleRemoveTickets = () => {
         const remainingTickets = billData.tickets.filter(ticket => !selectedTickets.has(ticket));
-        let total = calculateTotal(Array.from(remainingTickets),billData.pwt,billData.ticketPrice)
+        let total = calculateTotal(Array.from(remainingTickets),billData?.ticketPrice)
+        let totalpayable = totalPayable(total,billData?.pwt)
         onUpdateBill({
             ...billData,
             type:'Duplicate',
             date: new Date(),
             totalAmount: total.toFixed(2),
-            tickets: remainingTickets
+            tickets: remainingTickets,
+            totalPayable: totalpayable
         });
         updateSelectedTicketsStatus(Array.from(selectedTickets))
         setSelectedTickets(new Set());
