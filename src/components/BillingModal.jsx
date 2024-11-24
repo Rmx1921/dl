@@ -394,6 +394,7 @@ const BillingModal = ({ isOpen, onClose }) => {
             await handleBillsave(selectedTickets, tempBillNo, buyerName, pwtPrice, currentDateTime)
             setTempBillNo(null);
             setModalIsOpen(false)
+            setBuyerName('')
             handleReset()
         }
     };
@@ -487,7 +488,7 @@ const BillingModal = ({ isOpen, onClose }) => {
                             ) : (
                                 <select
                                     value={selectedPrice}
-                                        onChange={() => setSelectedPrice(Number(e.target.value))}
+                                        onChange={(e) => setSelectedPrice(Number(e.target.value))}
                                     className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     {ticketprice.map((price, index) => (
@@ -656,12 +657,12 @@ const BillingModal = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-                    <div className="w-64 p-4 border-l border-gray-200">
+                    {/* <div className="w-52 p-4 border-l border-gray-200">
                         <SelectedTickets
                             tickets={newSelected1.size > 0 ? newSelected1 : selectedTickets}
                             onRemove={handleRemoveSelectedTickets}
                         />
-                    </div>
+                    </div> */}
                 </div>
             </div>
         )
