@@ -1,8 +1,8 @@
-import { useMemo } from "react";
-import { formatDate } from '../utils/fortmatDate'
-import { X } from 'lucide-react'
+import React, { useMemo } from "react";
+import { formatDate } from '../utils/fortmatDate';
+import { X } from 'lucide-react';
 
-const SelectedTickets = ({ tickets, onRemove }) => {
+const SelectedTickets = React.memo(({ tickets, onRemove }) => {
     const summaryGroups = useMemo(() => {
         const groups = {};
 
@@ -90,6 +90,6 @@ const SelectedTickets = ({ tickets, onRemove }) => {
             )}
         </div>
     );
-};
+});
 
 export default SelectedTickets;
