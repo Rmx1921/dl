@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo} from 'react';
+import React, { useState, useEffect, useMemo,useCallback} from 'react';
 import { getAllTicketsFromDB, updateSelectedTicketsStatus } from '../components/helpers/indexdb';
 import { getLastBillNumber, saveBillNumber } from './helpers/billnodb'
 import { saveBills } from './helpers/billsdb'
@@ -36,10 +36,55 @@ const BillingModal = ({ isOpen, onClose }) => {
     const [newSelected,setNewSelected]=useState(new Set())
     const [newSelected1, setNewSelected1] = useState(new Set())
     const [showTicket, setShowTickets] = useState(new Date())
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(()=>{
         setSelectedDrawDate(formatDate(showTicket))
+        localStorage.setItem('showTicket', showTicket);
     }, [showTicket])
+
+    async function fetchTickets() {
+        const date = localStorage.getItem('showTicket') || '';
+        const ticketsFromDB = await getAllTicketsFromDB(date);
+        const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
+        setAllTickets(unsoldTickets);
+    }
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (allTickets.length > 0) {
+                searchTickets(searchQuery, selectedDrawDate);
+            } else {
+                setDisplayedTickets([])
+            }
+        }, 300);
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery, allTickets, selectedDrawDate, showTicket]);
+
+    const handlePrintSuccess = async () => {
+        if (tempBillNo !== null) {
+            await saveBillNumber(tempBillNo);
+            setBillno(tempBillNo);
+            await updateSelectedTicketsStatus(Array.from(selectedTickets))
+            await handleBillsave(selectedTickets, tempBillNo, buyerName, pwtPrice, currentDateTime)
+            setTempBillNo(null);
+            setModalIsOpen(false)
+            setBuyerName('')
+            handleReset()
+            await fetchTickets();
+        }
+    };
+
+    const handleReset = () => {
+        setSelectedTickets(new Set());
+        setNewSelected(new Set())
+        setNewSelected1(new Set())
+        setFilterTicketData([])
+        setAllTickets([])
+        setSearchQuery('');
+        setStart('');
+        setEnd('');
+    }
 
     function filterTicketsByRange(tickets, startSuffix, endSuffix) {
         if (startSuffix !== null && endSuffix !== null) {
@@ -198,24 +243,18 @@ const BillingModal = ({ isOpen, onClose }) => {
             async function fetchTickets(showTicket) {
                 const ticketsFromDB = await getAllTicketsFromDB(showTicket);
                 const unsoldTickets = ticketsFromDB.filter(ticket => ticket.state === true);
+                if (unsoldTickets[0].ticketname === 'FIFTY-FIFTY'){
+                    setSelectedPrice(Number(ticketprice[1]))
+                }else{
+                    setSelectedPrice(Number(ticketprice[0]))
+                }
                 setAllTickets(unsoldTickets);
             }
             fetchTickets(showTicket);
         }
     }, [isOpen, showTicket]);
 
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (allTickets.length > 0) {
-                searchTickets(searchQuery, selectedDrawDate);
-            }else{
-                setDisplayedTickets([])
-            }
-        }, 300);
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, allTickets, selectedDrawDate, showTicket]);
-
-    const searchTickets = (query, drawDate) => {
+    const searchTickets = useCallback((query, drawDate) => {
         if (query.trim() === '' && !drawDate) {
             setSearchResults([]);
             setDisplayedTickets([]);
@@ -259,7 +298,7 @@ const BillingModal = ({ isOpen, onClose }) => {
         const results = Object.entries(groupedTickets);
         setSearchResults(results);
         setDisplayedTickets(results.slice(0, ticketsToShow));
-    };
+    }, [allTickets]);
 
     const handleGroupExpand = (groupKey) => {
         setExpandedGroups(prev => {
@@ -352,16 +391,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         }
     };
 
-    const handleReset = () => {
-        setSelectedTickets(new Set());
-        setNewSelected(new Set())
-        setNewSelected1(new Set())
-        setFilterTicketData([])
-        setSearchQuery('');
-        setStart('');
-        setEnd('');
-    }
-
     const groupTicketsInFives = (tickets) => {
         return tickets.reduce((acc, ticket, index) => {
             const groupIndex = Math.floor(index / 5);
@@ -384,19 +413,6 @@ const BillingModal = ({ isOpen, onClose }) => {
         const newBillNo = lastbillno == null ? 1 : lastbillno + 1;
         setTempBillNo(newBillNo);
         setModalIsOpen(true);
-    };
-
-    const handlePrintSuccess = async () => {
-        if (tempBillNo !== null) {
-            await saveBillNumber(tempBillNo);
-            setBillno(tempBillNo);
-            await updateSelectedTicketsStatus(Array.from(selectedTickets))
-            await handleBillsave(selectedTickets, tempBillNo, buyerName, pwtPrice, currentDateTime)
-            setTempBillNo(null);
-            setModalIsOpen(false)
-            setBuyerName('')
-            handleReset()
-        }
     };
 
     const handleClose = ()=>{
