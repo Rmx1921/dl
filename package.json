@@ -1,5 +1,5 @@
 {
-  "name": "devan-lottery",
+  "name": "dev-model",
   "private": true,
   "version": "1.1.6",
   "type": "module",
@@ -54,8 +54,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.yourcompany.yourapp",
-    "productName": "DL",
+    "appId": "com.test.dev",
+    "productName": "DEV",
     "files": [
       "dist/**/*",
       "main.js",
@@ -81,8 +81,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "NeeharPrem",
-      "repo": "private",
+      "owner": "Rmx1921",
+      "repo": "dl",
       "private": true,
       "releaseType": "release"
     }
